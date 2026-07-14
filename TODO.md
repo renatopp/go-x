@@ -10,15 +10,8 @@
 
 **fsx**
 
+- Add os.Create alias and other os utility functions
 - Add zip, gzip, bzip2 and tar functions
-
-**syncx**
-
-- Add goroutine pool
-
-**convx**
-
-- Str convs and parsers (ToString(), ToInt, ToFloat, ...)
 
 **envx**
 
