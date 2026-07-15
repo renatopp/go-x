@@ -53,6 +53,6 @@ var (
 	PathSeparator = string(os.PathSeparator)
 )
 
-func Force[T any](value T, err error) T {
+func force[T any](value T, err error) T {
 	return value
 }

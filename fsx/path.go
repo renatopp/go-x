@@ -106,37 +106,74 @@ func SplitPath(p string) []string {
 	return strings.Split(ToSlashPath(p), "/")
 }
 
+// GetPathBase returns the last element of the path, which is typically the
+// file name or the last directory in the path.
+//
+//	/home/users/dev/fs/path.go -> path.go
+//	/home/users/dev/fs/ -> fs
+//	/home/users/dev/fs -> fs
 func GetPathBase(p string) string {
 	return filepath.Base(p)
 }
 
+// GetPathName returns the file name without the extension.
+//
+//	/home/users/dev/fs/path.go -> path
+//	/home/users/dev/fs/ -> fs
+//	/home/users/dev/fs -> fs
 func GetPathName(p string) string {
 	ext := filepath.Ext(p)
 	return strings.TrimSuffix(filepath.Base(p), ext)
 }
 
+// GetPathExtension returns the file extension, including the dot.
+//
+//	/home/users/dev/fs/path.go -> .go
+//	/home/users/dev/fs/ -> ""
+//	/home/users/dev/fs -> ""
 func GetPathExtension(p string) string {
 	return filepath.Ext(p)
 }
 
+// GetPathExtensionName returns the file extension without the dot.
+//
+//	/home/users/dev/fs/path.go -> go
+//	/home/users/dev/fs/ -> ""
+//	/home/users/dev/fs -> ""
 func GetPathExtensionName(p string) string {
 	ext := filepath.Ext(p)
 	return strings.TrimPrefix(ext, ".")
 }
 
+// GetPathParent returns the parent directory of the given path.
+//
+//	/home/users/dev/fs/path.go -> /home/users/dev/fs
+//	/home/users/dev/fs/ -> /home/users/dev
+//	/home/users/dev/fs -> /home/users/dev
 func GetPathParent(p string) string {
 	return filepath.Dir(p)
 }
 
+// GetPathParentName returns the name of the parent directory of the given path.
+//
+//	/home/users/dev/fs/path.go -> fs
+//	/home/users/dev/fs/ -> dev
+//	/home/users/dev/fs -> dev
 func GetPathParentName(p string) string {
 	dir := filepath.Dir(p)
 	return filepath.Base(dir)
 }
 
+// GetPathVolume returns the volume name of the given path. On Windows, this is
+// the drive letter (e.g., "C:"). On Unix-like systems, this will be an empty string.
+//
+//	C:\Users\dev\fs\path.go -> C:
 func GetPathVolume(p string) string {
 	return filepath.VolumeName(p)
 }
 
+// GetPathParts returns a PathParts struct containing various components of
+// the given path.
 func GetPathParts(p string) PathParts {
 	abs := ForceAbsolutePath(p)
 	return PathParts{

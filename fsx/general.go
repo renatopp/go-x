@@ -284,6 +284,14 @@ func SetMode(p string, mode os.FileMode) error {
 	return os.Chmod(p, mode)
 }
 
+func SetModeRecursive(p string, mode os.FileMode) error {
+	return ChmodRecursive(p, mode)
+}
+
+func ForceSetModeRecursive(p string, mode os.FileMode) {
+	ForceChmodRecursive(p, mode)
+}
+
 func SetHidden(p string, hidden bool) error {
 	// abs := Force(AbsolutePath(p))
 	if runtime.GOOS == "windows" {
@@ -333,6 +341,44 @@ func Chmod(p string, mode os.FileMode) error {
 	return os.Chmod(p, mode)
 }
 
+func ChmodRecursive(p string, mode os.FileMode) error {
+	if !IsDir(p) {
+		return os.Chmod(p, mode)
+	}
+	err := os.Chmod(p, mode)
+	if err != nil {
+		return err
+	}
+	Walk(p, func(path string) error {
+		return os.Chmod(path, mode)
+	})
+	return nil
+}
+
+func ForceChmodRecursive(p string, mode os.FileMode) {
+	if !IsDir(p) {
+		os.Chmod(p, mode)
+		return
+	}
+	os.Chmod(p, mode)
+	Walk(p, func(path string) error {
+		os.Chmod(path, mode)
+		return nil
+	})
+}
+
+func SetOwner(p string, uid, gid int) error {
+	return os.Chown(p, uid, gid)
+}
+
+func SetOwnerRecursive(p string, uid, gid int) error {
+	return ChownRecursive(p, uid, gid)
+}
+
+func ForceSetOwnerRecursive(p string, uid, gid int) {
+	ForceChownRecursive(p, uid, gid)
+}
+
 // Chown changes the ownership of a file at the specified path to the given
 // user ID (uid) and group ID (gid). If the path does not exist, it returns
 // an error.
@@ -340,14 +386,36 @@ func Chown(p string, uid, gid int) error {
 	return os.Chown(p, uid, gid)
 }
 
+func ChownRecursive(p string, uid, gid int) error {
+	if !IsDir(p) {
+		return os.Chown(p, uid, gid)
+	}
+	err := os.Chown(p, uid, gid)
+	if err != nil {
+		return err
+	}
+	Walk(p, func(path string) error {
+		return os.Chown(path, uid, gid)
+	})
+	return nil
+}
+
+func ForceChownRecursive(p string, uid, gid int) {
+	if !IsDir(p) {
+		os.Chown(p, uid, gid)
+		return
+	}
+	os.Chown(p, uid, gid)
+	Walk(p, func(path string) error {
+		os.Chown(path, uid, gid)
+		return nil
+	})
+}
+
 // Chdir changes the current working directory to the specified path. If the
 // path does not exist or is not a directory, it returns an error.
 func Chdir(p string) error {
 	return os.Chdir(p)
-}
-
-func SetOwner(p string, uid, gid int) error {
-	return os.Chown(p, uid, gid)
 }
 
 func Empty(p string) error {
@@ -469,8 +537,7 @@ func GetModTime(p string) (time.Time, error) {
 }
 
 func ForceGetModTime(p string) time.Time {
-	t, _ := GetModTime(p)
-	return t
+	return force(GetModTime(p))
 }
 
 // GetInfo returns a FileInfo describing the file at the specified path. If the
@@ -490,7 +557,7 @@ func GetMode(p string) (os.FileMode, error) {
 }
 
 // Getwd returns the current working directory.
-func Getwd() (string, error) {
+func GetPwd() (string, error) {
 	return GetCurrentDir()
 }
 

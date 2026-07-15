@@ -3,6 +3,7 @@ package fmtx
 import (
 	"fmt"
 	"io"
+	"os"
 )
 
 // Print is an alias to fmt.Printf.
@@ -36,9 +37,16 @@ func FPrintln(w io.Writer, msg string, v ...any) (n int, err error) {
 	return fmt.Fprintf(w, msg+"\n", v...)
 }
 
-// Fatal is an alias to panic with a formatted message.
-func Fatal(msg string, v ...any) {
+// Panic is an alias to panic with a formatted message.
+func Panic(msg string, v ...any) {
 	panic(fmt.Sprintf(msg, v...))
+}
+
+// Fatal prints a formatted message to stdout and exits the program with
+// status code 1.
+func Fatal(msg string, v ...any) {
+	fmt.Printf(msg, v...)
+	os.Exit(1)
 }
 
 // Error is an alias to fmt.Errorf.

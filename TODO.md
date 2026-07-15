@@ -2,6 +2,12 @@
 
 - **convx**
 - **dsx**
+  - Set
+  - Trees
+  - Trie
+  - Graph
+  - LRU Cache
+  - Ring
 - **fmtx**
   - Adding a Repr(any).
 - **fsx**

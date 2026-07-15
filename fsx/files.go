@@ -10,75 +10,16 @@ import (
 	"strings"
 )
 
-// ----------------------------------------------------------------------------
-// INTERNAL
-// ----------------------------------------------------------------------------
-
-// isEmptyFile checks if the file at the specified path is empty.
-//
-// It returns a value and an error. The value is true if the file is empty,
-// false if it contains data or if there was an error. If the path points to a
-// directory or does not exist, it returns an appropriate error.
-func isEmptyFile(p string) (bool, error) {
-	info, err := os.Stat(p)
-	if err != nil {
-		return false, err
-	}
-	if info.IsDir() {
-		return false, ErrIsDir
-	}
-	return info.Size() == 0, nil
-}
-
-// copyFile copies a file from src to dst. If dst does not exist, it will be
-// created. If it exists, it will be overwritten.
-func copyFile(src, dst string) error {
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer srcFile.Close()
-
-	dstFile, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer dstFile.Close()
-
-	_, err = srcFile.WriteTo(dstFile)
-	return err
-}
-
-// sizeFile returns the size of the file at the specified path in bytes. If the
-// path points to a directory or does not exist, it returns an error.
-func sizeFile(p string) (int64, error) {
-	info, err := os.Stat(p)
-	if err != nil {
-		return 0, err
-	}
-	return info.Size(), nil
-}
-
-// hashFile computes the hash of the file at the specified path using the
-// provided hash function and returns it as a hexadecimal string.
-func hashFile(p string, h hash.Hash) (string, error) {
-	data, err := ReadFile(p)
-	if err != nil {
-		return "", err
-	}
-	h.Write(data)
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
-}
-
-// ----------------------------------------------------------------------------
-// PUBLIC
-// ----------------------------------------------------------------------------
-
 // OpenFile opens the file at the specified path for reading. It returns a file
 // handle and an error. If the file does not exist or is not accessible, it
 // returns an error.
 func OpenFile(p string) (*os.File, error) {
 	return os.Open(p)
+}
+
+// CreateFile creates a new file at the specified path. Alias for os.Create.
+func CreateFile(p string) (*os.File, error) {
+	return os.Create(p)
 }
 
 // ForceOpenFile opens the file at the specified path for reading and returns
@@ -211,6 +152,17 @@ func ReadFileJson(p string, v any) error {
 	return json.Unmarshal(data, v)
 }
 
+func ReadFileJsonAs[T any](p string) (T, error) {
+	var v T
+	err := ReadFileJson(p, &v)
+	return v, err
+}
+
+func ForceReadFileJsonAs[T any](p string) T {
+	v, _ := ReadFileJsonAs[T](p)
+	return v
+}
+
 // WriteFile writes the given byte slice data to a file at the specified path.
 // IF the directory does not exist, it will fail. If the file exists, it will
 // be overwritten.
@@ -242,6 +194,41 @@ func WriteFileJson(p string, v any) error {
 		return err
 	}
 	return WriteFile(p, data)
+}
+
+// WriteFileAtomic writes the given byte slice data to a file at the specified
+func WriteFileAtomic(p string, data []byte) error {
+	dir := filepath.Dir(p)
+	tempFile, err := os.CreateTemp(dir, "temp-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tempFile.Name())
+	if _, err := tempFile.Write(data); err != nil {
+		tempFile.Close()
+		return err
+	}
+	if err := tempFile.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tempFile.Name(), p)
+}
+
+func WriteFileStringAtomic(p string, data string) error {
+	return WriteFileAtomic(p, []byte(data))
+}
+
+func WriteFileLinesAtomic(p string, lines []string) error {
+	data := strings.Join(lines, "\n")
+	return WriteFileStringAtomic(p, data)
+}
+
+func WriteFileJsonAtomic(p string, v any) error {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return err
+	}
+	return WriteFileAtomic(p, data)
 }
 
 // AppendFile appends the given byte slice data to a file at the specified path.
@@ -379,4 +366,60 @@ func TruncateFile(p string, size int64) error {
 		return ErrIsDir
 	}
 	return os.Truncate(p, size)
+}
+
+// isEmptyFile checks if the file at the specified path is empty.
+//
+// It returns a value and an error. The value is true if the file is empty,
+// false if it contains data or if there was an error. If the path points to a
+// directory or does not exist, it returns an appropriate error.
+func isEmptyFile(p string) (bool, error) {
+	info, err := os.Stat(p)
+	if err != nil {
+		return false, err
+	}
+	if info.IsDir() {
+		return false, ErrIsDir
+	}
+	return info.Size() == 0, nil
+}
+
+// copyFile copies a file from src to dst. If dst does not exist, it will be
+// created. If it exists, it will be overwritten.
+func copyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = srcFile.WriteTo(dstFile)
+	return err
+}
+
+// sizeFile returns the size of the file at the specified path in bytes. If the
+// path points to a directory or does not exist, it returns an error.
+func sizeFile(p string) (int64, error) {
+	info, err := os.Stat(p)
+	if err != nil {
+		return 0, err
+	}
+	return info.Size(), nil
+}
+
+// hashFile computes the hash of the file at the specified path using the
+// provided hash function and returns it as a hexadecimal string.
+func hashFile(p string, h hash.Hash) (string, error) {
+	data, err := ReadFile(p)
+	if err != nil {
+		return "", err
+	}
+	h.Write(data)
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }

@@ -13,4 +13,4 @@ Internal Coding Rules:
 - Public methods before private methods
 - Public functions before private functions
 - Types before functions, but struct declaraction should be followed by its factory function
-- Functions that return (value, error) must have Force* function variants that return (value) ignoring the error
+- Functions that return (value, error) must have Force* function variants that return (value) ignoring the error, if sementically possible.
