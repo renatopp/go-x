@@ -16,6 +16,7 @@
   - Add server utilities
 - **iterx**
 - **jsonx**
+- **logx**
 - **mapx**
 - **mathx**
 - **randx**
@@ -26,5 +27,7 @@
 
 Others
 
-- **envx**?
-  - Environment variable loading as object
+- yamlx
+- logx:
+  - adding handlers for slog(?)
+  - interface to slog(?)
