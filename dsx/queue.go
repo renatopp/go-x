@@ -4,6 +4,8 @@ import (
 	"iter"
 )
 
+var _ Container[any] = (*Queue[any])(nil)
+
 // Queue is a simple queue data structure that supports push and pop operations.
 type Queue[T comparable] struct {
 	items []T
@@ -220,5 +222,13 @@ func (q *Queue[T]) Iter() iter.Seq2[int, T] {
 				break
 			}
 		}
+	}
+}
+
+// ForEach applies the provided function f to each item in the queue, passing the
+// index and the item as arguments. The iteration starts from the front of the queue (index 0) to the end.
+func (q *Queue[T]) ForEach(f func(int, T)) {
+	for i, item := range q.items {
+		f(i, item)
 	}
 }

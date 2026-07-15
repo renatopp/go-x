@@ -4,6 +4,8 @@ import (
 	"iter"
 )
 
+var _ Container[any] = (*Stack[any])(nil)
+
 // Stack is a simple stack data structure that supports push and pop operations.
 type Stack[T comparable] struct {
 	items []T
@@ -228,5 +230,14 @@ func (s *Stack[T]) Iter() iter.Seq2[int, T] {
 				return
 			}
 		}
+	}
+}
+
+// ForEach applies the provided function f to each item in the stack, passing the
+// index and the item as arguments. The iteration starts from the top of the stack (the last item in the internal slice)
+// and goes down to the bottom (the first item in the internal slice).
+func (s *Stack[T]) ForEach(f func(int, T)) {
+	for i := len(s.items) - 1; i >= 0; i-- {
+		f(i, s.items[i])
 	}
 }

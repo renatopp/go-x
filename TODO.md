@@ -1,18 +1,24 @@
 # TODO
 
-**strx**
+- **convx**
+- **dsx**
+- **fmtx**
+  - Adding a Repr(any).
+- **fsx**
+  - Add os.Create alias and other os utility functions
+  - Add zip, gzip, bzip2 and tar functions
+- **httpx**
+- **iterx**
+- **jsonx**
+- **mapx**
+- **mathx**
+- **randx**
+- **runex**
+- **slicex**
+- **strx**
+- **testx**
 
-**iterx**
+Others
 
-**fmtx**
-
-- Adding a Repr(any).
-
-**fsx**
-
-- Add os.Create alias and other os utility functions
-- Add zip, gzip, bzip2 and tar functions
-
-**envx**
-
-- Environment variable loading as object
+- **envx**?
+  - Environment variable loading as object

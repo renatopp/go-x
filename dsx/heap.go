@@ -5,6 +5,8 @@ import (
 	"iter"
 )
 
+var _ Container[any] = (*Heap[any])(nil)
+
 // HeapItem represents an item in the heap with its associated value for
 // comparison.
 type HeapItem[T comparable] struct {
@@ -271,6 +273,15 @@ func (h *Heap[T]) Iter() iter.Seq2[int, T] {
 				return
 			}
 		}
+	}
+}
+
+// ForEach applies the provided function f to each item in the heap, passing the
+// index and the item as arguments. The iteration starts from the first item (the
+// one with the smallest value).
+func (h *Heap[T]) ForEach(f func(int, T)) {
+	for i, item := range h.items {
+		f(i, item.Item)
 	}
 }
 

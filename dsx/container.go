@@ -25,4 +25,5 @@ type Container[T comparable] interface {
 	Clear()
 	ToSlice() []T
 	Iter() iter.Seq2[int, T]
+	ForEach(f func(int, T))
 }

@@ -50,3 +50,14 @@ func (o Optional[T]) GetOr(defaultValue T) T {
 func (o Optional[T]) GetOk() (T, bool) {
 	return o.value, o.present
 }
+
+// Unwrap returns the value contained in the Optional if it is present. If the
+// Optional does not contain a value, it panics. This method should be used with caution,
+// as it can lead to runtime panics if the caller does not ensure that the value is present
+// using Has() before calling Unwrap().
+func (o Optional[T]) Unwrap() T {
+	if !o.present {
+		panic("attempted to unwrap an Optional that is not present")
+	}
+	return o.value
+}
