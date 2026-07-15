@@ -20,6 +20,7 @@ fsx.WatchRecursive(context.Background(), config.BaseDir, func (e fsx.Event) {
 - [Directory Operations](#directory-operations)
 - [Path Manipulation](#path-manipulation)
 - [File System Traversal](#file-system-traversal)
+- [Compression & Archiving](#compression--archiving)
 - [File Hashing](#file-hashing)
 - [Permissions & Ownership](#permissions--ownership)
 - [Links](#links)
@@ -229,6 +230,111 @@ Listing and walking directories:
 | `ForceGlob(dir, pattern)` | Like Glob, ignores errors |
 | `Match(p, pattern)` | Checks if path matches glob pattern |
 | `ForceMatch(p, pattern)` | Like Match, ignores errors |
+
+## Compression & Archiving
+
+Compressing and archiving files and directories, built entirely on the standard
+library (`archive/zip`, `archive/tar`, `compress/gzip`, `compress/zlib`,
+`compress/flate`, `compress/lzw`, `compress/bzip2`).
+
+`Zip`/`Tar`/`TarGz` accept a file or directory as `src`; a directory's
+contents are archived using paths relative to `src` (the directory itself is
+not nested inside the archive). `Gzip`/`Zlib`/`Flate`/`Lzw` compress a single
+file only and return `ErrIsDir` if `src` is a directory.
+
+### Zip
+
+| Function | Description |
+|----------|--------------|
+| `Zip(src, dest)` | Compresses a file or directory into a zip archive |
+| `Unzip(src, dest)` | Extracts a zip archive into a directory |
+| `OpenZip(path)` | Opens a zip archive for reading, returns `*zip.ReadCloser` |
+| `CreateZip(path)` | Creates a zip archive for writing, returns `*zip.Writer` |
+
+### Tar
+
+| Function | Description |
+|----------|--------------|
+| `Tar(src, dest)` | Archives a file or directory into a tar archive |
+| `Untar(src, dest)` | Extracts a tar archive into a directory |
+| `OpenTar(path)` | Opens a tar archive for reading, returns `*TarReader` |
+| `CreateTar(path)` | Creates a tar archive for writing, returns `*TarWriter` |
+
+### Tar+Gzip
+
+| Function | Description |
+|----------|--------------|
+| `TarGz(src, dest)` | Archives a file or directory into a gzip-compressed tar archive |
+| `UntarGz(src, dest)` | Extracts a gzip-compressed tar archive into a directory |
+| `OpenTarGz(path)` | Opens a gzip-compressed tar archive for reading, returns `*TarGzReader` |
+| `CreateTarGz(path)` | Creates a gzip-compressed tar archive for writing, returns `*TarGzWriter` |
+
+### Gzip
+
+| Function | Description |
+|----------|--------------|
+| `Gzip(src, dest)` | Compresses a file with gzip |
+| `Ungzip(src, dest)` | Decompresses a gzip-compressed file |
+| `OpenGzip(path)` | Opens a gzip-compressed file for reading, returns `*GzipReader` |
+| `CreateGzip(path)` | Creates a gzip-compressed file for writing, returns `*GzipWriter` |
+
+### Zlib
+
+| Function | Description |
+|----------|--------------|
+| `Zlib(src, dest)` | Compresses a file with zlib |
+| `Unzlib(src, dest)` | Decompresses a zlib-compressed file |
+| `OpenZlib(path)` | Opens a zlib-compressed file for reading, returns `*ZlibReader` |
+| `CreateZlib(path)` | Creates a zlib-compressed file for writing, returns `*ZlibWriter` |
+
+### Flate
+
+Raw DEFLATE data has no header identifying it, so it cannot be auto-detected
+by `Decompress`.
+
+| Function | Description |
+|----------|--------------|
+| `Flate(src, dest)` | Compresses a file with raw DEFLATE |
+| `Unflate(src, dest)` | Decompresses a raw DEFLATE-compressed file |
+| `OpenFlate(path)` | Opens a raw DEFLATE-compressed file for reading, returns `*FlateReader` |
+| `CreateFlate(path)` | Creates a raw DEFLATE-compressed file for writing, returns `*FlateWriter` |
+
+### Lzw
+
+LZW streams carry no header identifying them, so they cannot be auto-detected
+by `Decompress`. The `*With` variants take explicit `order`/`litWidth`
+parameters; the plain functions use `DefaultLzwOrder`/`DefaultLzwLitWidth`.
+
+| Function | Description |
+|----------|--------------|
+| `Lzw(src, dest)` | Compresses a file with LZW using the default order/litWidth |
+| `LzwWith(src, dest, order, litWidth)` | Compresses a file with LZW using explicit order/litWidth |
+| `Unlzw(src, dest)` | Decompresses an LZW-compressed file using the default order/litWidth |
+| `UnlzwWith(src, dest, order, litWidth)` | Decompresses an LZW-compressed file using explicit order/litWidth |
+| `OpenLzw(path)` | Opens an LZW-compressed file for reading, returns `*LzwReader` |
+| `OpenLzwWith(path, order, litWidth)` | Like OpenLzw with explicit order/litWidth |
+| `CreateLzw(path)` | Creates an LZW-compressed file for writing, returns `*LzwWriter` |
+| `CreateLzwWith(path, order, litWidth)` | Like CreateLzw with explicit order/litWidth |
+
+### Bzip2
+
+The standard library only implements a bzip2 reader, not a writer, so there is
+no `Bzip2` compress function — only decompression is supported.
+
+| Function | Description |
+|----------|--------------|
+| `Bunzip2(src, dest)` | Decompresses a bzip2-compressed file |
+| `OpenBzip2(path)` | Opens a bzip2-compressed file for reading, returns `*Bzip2Reader` |
+
+### Auto-detection
+
+| Function | Description |
+|----------|--------------|
+| `Decompress(src, dest)` | Detects the format of src (zip, tar, tar.gz, gzip, zlib or bzip2) from its content and extracts/decompresses it into dest; returns `ErrUnknownFormat` otherwise |
+
+`dest` is a directory for archive formats (zip, tar, tar.gz) and a file for
+single-stream formats (gzip, zlib, bzip2), matching the corresponding `UnX`
+function.
 
 ## File Hashing
 

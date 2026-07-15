@@ -8,12 +8,12 @@
   - Graph
   - LRU Cache
   - Ring
+- **envx**
 - **fmtx**
   - Adding a Repr(any).
 - **fsx**
-  - Add os.Create alias and other os utility functions
-  - Add zip, gzip, bzip2 and tar functions
 - **httpx**
+  - Add server utilities
 - **iterx**
 - **jsonx**
 - **mapx**
