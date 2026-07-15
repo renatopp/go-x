@@ -18,12 +18,12 @@ type Container[T comparable] interface {
 	PopOr(v T) T
 	PopOk() (T, bool)
 	IndexOf(item T) int
-	IndexOfFunc(f func(T) bool) int
+	IndexOfFunc(fn func(T) bool) int
 	Contains(item T) bool
-	ContainsFunc(f func(T) bool) bool
+	ContainsFunc(fn func(T) bool) bool
 	Size() int
 	Clear()
 	ToSlice() []T
 	Iter() iter.Seq2[int, T]
-	ForEach(f func(int, T))
+	ForEach(fn func(int, T))
 }

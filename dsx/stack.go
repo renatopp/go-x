@@ -173,9 +173,9 @@ func (s *Stack[T]) IndexOf(item T) int {
 // IndexOfFunc returns the index of the first item in the stack that satisfies the
 // provided predicate function, or -1 if no such item is found. The search is
 // performed from the top of the stack.
-func (s *Stack[T]) IndexOfFunc(f func(T) bool) int {
+func (s *Stack[T]) IndexOfFunc(fn func(T) bool) int {
 	for i := len(s.items) - 1; i >= 0; i-- {
-		if f(s.items[i]) {
+		if fn(s.items[i]) {
 			return i
 		}
 	}
@@ -191,8 +191,8 @@ func (s *Stack[T]) Contains(item T) bool {
 // ContainsFunc returns true if there is an item in the stack that satisfies the
 // provided predicate function, and false otherwise. The search is performed from
 // the top of the stack.
-func (s *Stack[T]) ContainsFunc(f func(T) bool) bool {
-	return s.IndexOfFunc(f) != -1
+func (s *Stack[T]) ContainsFunc(fn func(T) bool) bool {
+	return s.IndexOfFunc(fn) != -1
 }
 
 // Size returns the number of items currently in the stack.
@@ -233,11 +233,11 @@ func (s *Stack[T]) Iter() iter.Seq2[int, T] {
 	}
 }
 
-// ForEach applies the provided function f to each item in the stack, passing the
+// ForEach applies the provided function fn to each item in the stack, passing the
 // index and the item as arguments. The iteration starts from the top of the stack (the last item in the internal slice)
 // and goes down to the bottom (the first item in the internal slice).
-func (s *Stack[T]) ForEach(f func(int, T)) {
+func (s *Stack[T]) ForEach(fn func(int, T)) {
 	for i := len(s.items) - 1; i >= 0; i-- {
-		f(i, s.items[i])
+		fn(i, s.items[i])
 	}
 }

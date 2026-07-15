@@ -185,12 +185,12 @@ func (h *Heap[T]) IndexOf(item T) int {
 }
 
 // IndexOfFunc returns the index of the first item in the heap that satisfies
-// the provided function f. The function f takes an item of type T and returns
+// the provided function fn. The function fn takes an item of type T and returns
 // a boolean indicating whether the item satisfies the condition. If no item
 // satisfies the condition, it returns -1.
-func (h *Heap[T]) IndexOfFunc(f func(T) bool) int {
+func (h *Heap[T]) IndexOfFunc(fn func(T) bool) int {
 	for i, v := range h.items {
-		if f(v.Item) {
+		if fn(v.Item) {
 			return i
 		}
 	}
@@ -209,12 +209,12 @@ func (h *Heap[T]) Contains(item T) bool {
 }
 
 // ContainsFunc checks if there exists an item in the heap that satisfies the
-// provided function f. The function f takes an item of type T and returns a
+// provided function fn. The function fn takes an item of type T and returns a
 // boolean indicating whether the item satisfies the condition. It returns true
 // if such an item is found, and false otherwise.
-func (h *Heap[T]) ContainsFunc(f func(T) bool) bool {
+func (h *Heap[T]) ContainsFunc(fn func(T) bool) bool {
 	for _, v := range h.items {
-		if f(v.Item) {
+		if fn(v.Item) {
 			return true
 		}
 	}
@@ -276,12 +276,12 @@ func (h *Heap[T]) Iter() iter.Seq2[int, T] {
 	}
 }
 
-// ForEach applies the provided function f to each item in the heap, passing the
+// ForEach applies the provided function fn to each item in the heap, passing the
 // index and the item as arguments. The iteration starts from the first item (the
 // one with the smallest value).
-func (h *Heap[T]) ForEach(f func(int, T)) {
+func (h *Heap[T]) ForEach(fn func(int, T)) {
 	for i, item := range h.items {
-		f(i, item.Item)
+		fn(i, item.Item)
 	}
 }
 

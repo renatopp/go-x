@@ -2,10 +2,21 @@ package fmtx
 
 import (
 	"fmt"
+	"os"
 	"strings"
 )
 
 var enabled = true
+
+func init() {
+	if os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" {
+		enabled = false
+	}
+
+	if os.Getenv("FORCE_COLOR") != "" {
+		enabled = true
+	}
+}
 
 // EnableColors enables the use of colors globally in the package. By default,
 // colors are enabled.

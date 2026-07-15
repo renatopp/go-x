@@ -1,0 +1,1 @@
+- Structures that use indexing should use `resolveIndex` to accept negative indices, as python-like.

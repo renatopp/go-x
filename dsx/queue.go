@@ -166,9 +166,9 @@ func (q *Queue[T]) IndexOf(item T) int {
 
 // IndexOfFunc returns the index of the first item in the queue that
 // satisfies the provided predicate function. If no such item is found, it returns -1.
-func (q *Queue[T]) IndexOfFunc(f func(T) bool) int {
+func (q *Queue[T]) IndexOfFunc(fn func(T) bool) int {
 	for i, v := range q.items {
-		if f(v) {
+		if fn(v) {
 			return i
 		}
 	}
@@ -183,8 +183,8 @@ func (q *Queue[T]) Contains(item T) bool {
 
 // ContainsFunc returns true if there is an item in the queue that satisfies
 // the provided predicate function, and false otherwise.
-func (q *Queue[T]) ContainsFunc(f func(T) bool) bool {
-	return q.IndexOfFunc(f) != -1
+func (q *Queue[T]) ContainsFunc(fn func(T) bool) bool {
+	return q.IndexOfFunc(fn) != -1
 }
 
 // Size returns the number of items currently in the queue.
@@ -225,10 +225,10 @@ func (q *Queue[T]) Iter() iter.Seq2[int, T] {
 	}
 }
 
-// ForEach applies the provided function f to each item in the queue, passing the
+// ForEach applies the provided function fn to each item in the queue, passing the
 // index and the item as arguments. The iteration starts from the front of the queue (index 0) to the end.
-func (q *Queue[T]) ForEach(f func(int, T)) {
+func (q *Queue[T]) ForEach(fn func(int, T)) {
 	for i, item := range q.items {
-		f(i, item)
+		fn(i, item)
 	}
 }

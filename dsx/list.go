@@ -5,15 +5,14 @@ import (
 	"slices"
 )
 
+var _ Container[int] = (*List[int])(nil)
+
 // List is a general-purpose dynamic array that supports random access,
 // insertion, and removal at arbitrary indices, in addition to the standard
 // Container operations.
 type List[T comparable] struct {
 	items []T
 }
-
-// Compile-time guarantee that List implements the Container interface.
-var _ Container[int] = (*List[int])(nil)
 
 // NewList creates a new empty list.
 func NewList[T comparable]() *List[T] {
@@ -136,9 +135,9 @@ func (l *List[T]) Remove(item T) bool {
 
 // RemoveFunc removes all items from the list that satisfy the provided predicate
 // function. It returns the number of items removed.
-func (l *List[T]) RemoveFunc(f func(T) bool) int {
+func (l *List[T]) RemoveFunc(fn func(T) bool) int {
 	before := len(l.items)
-	l.items = slices.DeleteFunc(l.items, f)
+	l.items = slices.DeleteFunc(l.items, fn)
 	return before - len(l.items)
 }
 
@@ -244,9 +243,9 @@ func (l *List[T]) IndexOf(item T) int {
 
 // IndexOfFunc returns the index of the first item in the list that satisfies
 // the provided predicate function, or -1 if no such item is found.
-func (l *List[T]) IndexOfFunc(f func(T) bool) int {
+func (l *List[T]) IndexOfFunc(fn func(T) bool) int {
 	for i, v := range l.items {
-		if f(v) {
+		if fn(v) {
 			return i
 		}
 	}
@@ -261,8 +260,8 @@ func (l *List[T]) Contains(item T) bool {
 
 // ContainsFunc returns true if there is an item in the list that satisfies the
 // provided predicate function, and false otherwise.
-func (l *List[T]) ContainsFunc(f func(T) bool) bool {
-	return l.IndexOfFunc(f) != -1
+func (l *List[T]) ContainsFunc(fn func(T) bool) bool {
+	return l.IndexOfFunc(fn) != -1
 }
 
 // Size returns the number of items currently in the list.
@@ -313,8 +312,8 @@ func (l *List[T]) Iter() iter.Seq2[int, T] {
 }
 
 // ForEach calls the given function for each index-item pair in the list, in order.
-func (l *List[T]) ForEach(f func(int, T)) {
+func (l *List[T]) ForEach(fn func(int, T)) {
 	for i, item := range l.items {
-		f(i, item)
+		fn(i, item)
 	}
 }

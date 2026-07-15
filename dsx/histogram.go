@@ -57,21 +57,33 @@ func (h *Histogram) BinWidth() float64 {
 	return (h.max - h.min) / float64(len(h.bins))
 }
 
-// BinCenter returns the center value of the specified bin.
+// BinCenter returns the center value of the specified bin. The index is
+// resolved using python-like negative indexing. If the index is out of range,
+// it returns 0.
 func (h *Histogram) BinCenter(index int) float64 {
+	index = resolveIndex(index, len(h.bins))
+	if index < 0 || index >= len(h.bins) {
+		return 0
+	}
 	return h.min + (float64(index)+0.5)*h.BinWidth()
 }
 
-// BinCount returns the count of values in the specified bin.
+// BinCount returns the count of values in the specified bin. The index is
+// resolved using python-like negative indexing. If the index is out of range,
+// it returns 0.
 func (h *Histogram) BinCount(index int) float64 {
+	index = resolveIndex(index, len(h.bins))
 	if index < 0 || index >= len(h.bins) {
 		return 0
 	}
 	return h.bins[index]
 }
 
-// BinRange returns the range of values that fall into the specified bin.
+// BinRange returns the range of values that fall into the specified bin. The
+// index is resolved using python-like negative indexing. If the index is out
+// of range, it returns 0, 0.
 func (h *Histogram) BinRange(index int) (float64, float64) {
+	index = resolveIndex(index, len(h.bins))
 	if index < 0 || index >= len(h.bins) {
 		return 0, 0
 	}

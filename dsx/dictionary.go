@@ -39,11 +39,11 @@ func (d *Dictionary) Get(key string) any {
 
 // GetOr returns the value associated with the given key. If the key does not
 // exist, it returns the provided default value.
-func (d *Dictionary) GetOr(key string, def any) any {
-	if v, ok := d.data[key]; ok {
-		return v
+func (d *Dictionary) GetOr(key string, v any) any {
+	if val, ok := d.data[key]; ok {
+		return val
 	}
-	return def
+	return v
 }
 
 // GetOk returns the value associated with the given key and true if the key
@@ -135,10 +135,10 @@ func (d *Dictionary) ToMap() map[string]any {
 	return d.data
 }
 
-// Merge returns a new dictionary that is the concatenation of the current
+// Concat returns a new dictionary that is the concatenation of the current
 // dictionary with the given dictionaries. If there are duplicate keys, the
 // value from the last dictionary wins.
-func (d *Dictionary) Merge(others ...*Dictionary) *Dictionary {
+func (d *Dictionary) Concat(others ...*Dictionary) *Dictionary {
 	data := maps.Clone(d.data)
 	for _, other := range others {
 		maps.Copy(data, other.data)
