@@ -12,6 +12,7 @@ type Watcher struct {
 	files   []string
 }
 
+// NewWatcher creates a new file system watcher.
 func NewWatcher() (*Watcher, error) {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -24,6 +25,7 @@ func NewWatcher() (*Watcher, error) {
 	}, nil
 }
 
+// Watch starts watching for file system events and calls the callback for each event.
 func (w *Watcher) Watch(ctx context.Context, callback func(event Event)) error {
 	for {
 		select {
@@ -82,6 +84,7 @@ func (w *Watcher) Close() error {
 	return w.watcher.Close()
 }
 
+// Watch watches a single path for file system events and calls the callback for each event.
 func Watch(ctx context.Context, p string, callback func(event Event)) error {
 	w, err := NewWatcher()
 	if err != nil {
@@ -91,6 +94,8 @@ func Watch(ctx context.Context, p string, callback func(event Event)) error {
 	return w.Watch(ctx, callback)
 }
 
+// WatchRecursive watches a directory and all its subdirectories for file system events.
+// It automatically adds and removes subdirectories as they are created and deleted.
 func WatchRecursive(ctx context.Context, p string, callback func(event Event)) error {
 	w, err := NewWatcher()
 	if err != nil {
@@ -111,6 +116,8 @@ func WatchRecursive(ctx context.Context, p string, callback func(event Event)) e
 	})
 }
 
+// WatchGlob watches a directory and filters events by a glob pattern.
+// The pattern is matched against paths relative to the directory.
 func WatchGlob(ctx context.Context, dir string, pattern string, callback func(event Event)) error {
 	if !IsPatternValid(pattern) {
 		return ErrInvalid

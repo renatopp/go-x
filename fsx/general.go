@@ -38,11 +38,13 @@ func IsEmpty(p string) (bool, error) {
 	}
 }
 
+// ForceIsEmpty is like IsEmpty but ignores errors and returns false on error.
 func ForceIsEmpty(p string) bool {
 	empty, _ := IsEmpty(p)
 	return empty
 }
 
+// IsSame checks if two paths refer to the same file by comparing their inode information.
 func IsSame(p1, p2 string) bool {
 	s1, err := os.Stat(p1)
 	if err != nil {
@@ -106,6 +108,7 @@ func IsWritable(p string) bool {
 	return true
 }
 
+// IsHidden checks if a file or directory is hidden (starts with a dot on Unix-like systems).
 func IsHidden(p string) (bool, error) {
 	// abs := Force(AbsolutePath(p))
 	base := filepath.Base(p)
@@ -123,10 +126,12 @@ func IsHidden(p string) (bool, error) {
 	return strings.HasPrefix(base, "."), nil
 }
 
+// IsPatternValid checks if the given glob pattern is valid.
 func IsPatternValid(pattern string) bool {
 	return doublestar.ValidatePattern(pattern)
 }
 
+// ForceIsHidden is like IsHidden but ignores errors and returns false on error.
 func ForceIsHidden(p string) bool {
 	hidden, _ := IsHidden(p)
 	return hidden
@@ -169,6 +174,7 @@ func List(p string) ([]string, error) {
 	return names, nil
 }
 
+// ForceList is like List but ignores errors and returns an empty slice on error.
 func ForceList(p string) []string {
 	list, _ := List(p)
 	return list
@@ -206,6 +212,7 @@ func ListRecursive(p string) ([]string, error) {
 	return results, nil
 }
 
+// ForceListRecursive is like ListRecursive but ignores errors and returns an empty slice on error.
 func ForceListRecursive(p string) []string {
 	list, _ := ListRecursive(p)
 	return list
@@ -227,15 +234,18 @@ func Glob(dir, pattern string) ([]string, error) {
 	return files, err
 }
 
+// ForceGlob is like Glob but ignores errors and returns an empty slice on error.
 func ForceGlob(dir string, pattern string) []string {
 	files, _ := Glob(dir, pattern)
 	return files
 }
 
+// Match checks if a path matches the given glob pattern.
 func Match(p, pattern string) (bool, error) {
 	return doublestar.Match(pattern, p)
 }
 
+// ForceMatch is like Match but ignores errors and returns false on error.
 func ForceMatch(p, pattern string) bool {
 	matched, _ := Match(p, pattern)
 	return matched
@@ -284,14 +294,17 @@ func SetMode(p string, mode os.FileMode) error {
 	return os.Chmod(p, mode)
 }
 
+// SetModeRecursive recursively sets the file mode (permissions) for a directory and all its contents.
 func SetModeRecursive(p string, mode os.FileMode) error {
 	return ChmodRecursive(p, mode)
 }
 
+// ForceSetModeRecursive is like SetModeRecursive but ignores errors.
 func ForceSetModeRecursive(p string, mode os.FileMode) {
 	ForceChmodRecursive(p, mode)
 }
 
+// SetHidden sets the hidden status of a file or directory by renaming it to/from a dot-prefixed name.
 func SetHidden(p string, hidden bool) error {
 	// abs := Force(AbsolutePath(p))
 	if runtime.GOOS == "windows" {
@@ -328,10 +341,12 @@ func SetHidden(p string, hidden bool) error {
 	}
 }
 
+// Hide hides a file or directory by renaming it to a dot-prefixed name.
 func Hide(p string) error {
 	return SetHidden(p, true)
 }
 
+// Unhide unhides a file or directory by removing its dot prefix.
 func Unhide(p string) error {
 	return SetHidden(p, false)
 }
@@ -341,6 +356,7 @@ func Chmod(p string, mode os.FileMode) error {
 	return os.Chmod(p, mode)
 }
 
+// ChmodRecursive recursively changes permissions for a directory and all its contents.
 func ChmodRecursive(p string, mode os.FileMode) error {
 	if !IsDir(p) {
 		return os.Chmod(p, mode)
@@ -355,6 +371,7 @@ func ChmodRecursive(p string, mode os.FileMode) error {
 	return nil
 }
 
+// ForceChmodRecursive is like ChmodRecursive but ignores errors.
 func ForceChmodRecursive(p string, mode os.FileMode) {
 	if !IsDir(p) {
 		os.Chmod(p, mode)
@@ -367,14 +384,17 @@ func ForceChmodRecursive(p string, mode os.FileMode) {
 	})
 }
 
+// SetOwner changes the ownership of a file (alias for Chown).
 func SetOwner(p string, uid, gid int) error {
 	return os.Chown(p, uid, gid)
 }
 
+// SetOwnerRecursive recursively changes ownership for a directory and all its contents.
 func SetOwnerRecursive(p string, uid, gid int) error {
 	return ChownRecursive(p, uid, gid)
 }
 
+// ForceSetOwnerRecursive is like SetOwnerRecursive but ignores errors.
 func ForceSetOwnerRecursive(p string, uid, gid int) {
 	ForceChownRecursive(p, uid, gid)
 }
@@ -386,6 +406,7 @@ func Chown(p string, uid, gid int) error {
 	return os.Chown(p, uid, gid)
 }
 
+// ChownRecursive recursively changes ownership for a directory and all its contents.
 func ChownRecursive(p string, uid, gid int) error {
 	if !IsDir(p) {
 		return os.Chown(p, uid, gid)
@@ -400,6 +421,7 @@ func ChownRecursive(p string, uid, gid int) error {
 	return nil
 }
 
+// ForceChownRecursive is like ChownRecursive but ignores errors.
 func ForceChownRecursive(p string, uid, gid int) {
 	if !IsDir(p) {
 		os.Chown(p, uid, gid)
@@ -418,6 +440,7 @@ func Chdir(p string) error {
 	return os.Chdir(p)
 }
 
+// Empty empties a file (truncates to zero) or directory (removes all contents).
 func Empty(p string) error {
 	if IsDir(p) {
 		return EmptyDir(p)
@@ -449,6 +472,7 @@ func Readlink(p string) (string, error) {
 	return os.Readlink(p)
 }
 
+// ForceReadlink is like Readlink but ignores errors and returns an empty string on error.
 func ForceReadlink(p string) string {
 	link, _ := Readlink(p)
 	return link
@@ -458,42 +482,51 @@ func ForceReadlink(p string) string {
 // HASHING
 // ----------------------------------------------------------------------------
 
+// MD5 computes the MD5 hash of a file or directory.
 func MD5(p string) (string, error) {
 	return Hash(p, md5.New())
 }
 
+// ForceMD5 is like MD5 but ignores errors and returns an empty string on error.
 func ForceMD5(p string) string {
 	sum, _ := MD5(p)
 	return sum
 }
 
+// SHA1 computes the SHA1 hash of a file or directory.
 func SHA1(p string) (string, error) {
 	return Hash(p, sha1.New())
 }
 
+// ForceSHA1 is like SHA1 but ignores errors and returns an empty string on error.
 func ForceSHA1(p string) string {
 	sum, _ := SHA1(p)
 	return sum
 }
 
+// SHA256 computes the SHA256 hash of a file or directory.
 func SHA256(path string) (string, error) {
 	return Hash(path, sha256.New())
 }
 
+// ForceSHA256 is like SHA256 but ignores errors and returns an empty string on error.
 func ForceSHA256(path string) string {
 	sum, _ := SHA256(path)
 	return sum
 }
 
+// Checksum computes the checksum (MD5) of a file or directory.
 func Checksum(p string) (string, error) {
 	return Hash(p, md5.New())
 }
 
+// ForceChecksum is like Checksum but ignores errors and returns an empty string on error.
 func ForceChecksum(p string) string {
 	sum, _ := Checksum(p)
 	return sum
 }
 
+// Hash computes the hash of a file or directory using the provided hash function.
 func Hash(p string, h hash.Hash) (string, error) {
 	if IsDir(p) {
 		return hashDir(p, h)
@@ -501,6 +534,7 @@ func Hash(p string, h hash.Hash) (string, error) {
 	return hashFile(p, h)
 }
 
+// ForceHash is like Hash but ignores errors and returns an empty string on error.
 func ForceHash(p string, h hash.Hash) string {
 	sum, _ := Hash(p, h)
 	return sum
@@ -520,6 +554,7 @@ func Size(p string) (int64, error) {
 	return sizeFile(p)
 }
 
+// ForceSize is like Size but ignores errors and returns 0 on error.
 func ForceSize(p string) int64 {
 	size, _ := Size(p)
 	return size
@@ -536,8 +571,10 @@ func GetModTime(p string) (time.Time, error) {
 	return info.ModTime(), nil
 }
 
+// ForceGetModTime is like GetModTime but ignores errors and returns zero time on error.
 func ForceGetModTime(p string) time.Time {
-	return force(GetModTime(p))
+	t, _ := GetModTime(p)
+	return t
 }
 
 // GetInfo returns a FileInfo describing the file at the specified path. If the

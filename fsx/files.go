@@ -22,12 +22,27 @@ func CreateFile(p string) (*os.File, error) {
 	return os.Create(p)
 }
 
-// ForceOpenFile opens the file at the specified path for reading and returns
-// the file handle. If the file does not exist or is not accessible, it returns
-// nil.
-func ForceOpenFile(p string) *os.File {
-	f, _ := OpenFile(p)
-	return f
+// TouchTempFile creates a temporary file with the specified prefix in the system's
+// default temporary directory. It returns the full path of the created file.
+func TouchTempFile(prefix string) (string, error) {
+	f, err := os.CreateTemp("", prefix)
+	if err != nil {
+		return "", err
+	}
+	f.Close()
+	return f.Name(), nil
+}
+
+// ForceTouchTempFile is like TouchTempFile but ignores errors and returns an empty string on error.
+func ForceTouchTempFile(prefix string) string {
+	p, _ := TouchTempFile(prefix)
+	return p
+}
+
+// CreateTempFile creates a temporary file with the specified prefix in the
+// system's default temporary directory and returns an open file handle to it.
+func CreateTempFile(prefix string) (*os.File, error) {
+	return os.CreateTemp("", prefix)
 }
 
 // IsFile checks if the given p is a file. If the p does not exist or is
@@ -61,6 +76,7 @@ func ListFiles(p string) ([]string, error) {
 	return files, nil
 }
 
+// ForceListFiles is like ListFiles but ignores errors and returns an empty slice on error.
 func ForceListFiles(p string) []string {
 	files, _ := ListFiles(p)
 	return files
@@ -98,6 +114,7 @@ func ListFilesRecursive(p string) ([]string, error) {
 	return results, nil
 }
 
+// ForceListFilesRecursive is like ListFilesRecursive but ignores errors and returns an empty slice on error.
 func ForceListFilesRecursive(p string) []string {
 	files, _ := ListFilesRecursive(p)
 	return files
@@ -108,6 +125,7 @@ func ReadFile(p string) ([]byte, error) {
 	return os.ReadFile(p)
 }
 
+// ForceReadFile is like ReadFile but ignores errors and returns an empty slice on error.
 func ForceReadFile(p string) []byte {
 	data, err := ReadFile(p)
 	if err != nil {
@@ -122,6 +140,7 @@ func ReadFileString(p string) (string, error) {
 	return string(data), err
 }
 
+// ForceReadFileString is like ReadFileString but ignores errors and returns an empty string on error.
 func ForceReadFileString(p string) string {
 	str, _ := ReadFileString(p)
 	return str
@@ -137,6 +156,7 @@ func ReadFileLines(p string) ([]string, error) {
 	return strings.Split(string(data), "\n"), nil
 }
 
+// ForceReadFileLines is like ReadFileLines but ignores errors and returns an empty slice on error.
 func ForceReadFileLines(p string) []string {
 	lines, _ := ReadFileLines(p)
 	return lines
@@ -152,12 +172,14 @@ func ReadFileJson(p string, v any) error {
 	return json.Unmarshal(data, v)
 }
 
+// ReadFileJsonAs reads a JSON file and unmarshals it into a value of type T, returning the result with type safety.
 func ReadFileJsonAs[T any](p string) (T, error) {
 	var v T
 	err := ReadFileJson(p, &v)
 	return v, err
 }
 
+// ForceReadFileJsonAs is like ReadFileJsonAs but ignores errors and returns the zero value of type T on error.
 func ForceReadFileJsonAs[T any](p string) T {
 	v, _ := ReadFileJsonAs[T](p)
 	return v
@@ -196,7 +218,8 @@ func WriteFileJson(p string, v any) error {
 	return WriteFile(p, data)
 }
 
-// WriteFileAtomic writes the given byte slice data to a file at the specified
+// WriteFileAtomic writes data to a temporary file and atomically renames it to the target path.
+// This ensures that the file is either fully written or not written at all, preventing partial writes.
 func WriteFileAtomic(p string, data []byte) error {
 	dir := filepath.Dir(p)
 	tempFile, err := os.CreateTemp(dir, "temp-*")
@@ -214,15 +237,18 @@ func WriteFileAtomic(p string, data []byte) error {
 	return os.Rename(tempFile.Name(), p)
 }
 
+// WriteFileStringAtomic is like WriteFileAtomic but accepts a string.
 func WriteFileStringAtomic(p string, data string) error {
 	return WriteFileAtomic(p, []byte(data))
 }
 
+// WriteFileLinesAtomic is like WriteFileAtomic but accepts a slice of strings (lines).
 func WriteFileLinesAtomic(p string, lines []string) error {
 	data := strings.Join(lines, "\n")
 	return WriteFileStringAtomic(p, data)
 }
 
+// WriteFileJsonAtomic is like WriteFileAtomic but marshals a value to JSON first.
 func WriteFileJsonAtomic(p string, v any) error {
 	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
@@ -334,28 +360,6 @@ func ReplaceInFile(p string, old []byte, new []byte) error {
 // byte slices.
 func ReplaceInFileString(p string, old string, new string) error {
 	return ReplaceInFile(p, []byte(old), []byte(new))
-}
-
-// CreateTempFile creates a temporary file with the specified prefix in the system's
-// default temporary directory. It returns the full path of the created file.
-func CreateTempFile(prefix string) (string, error) {
-	f, err := os.CreateTemp("", prefix)
-	if err != nil {
-		return "", err
-	}
-	f.Close()
-	return f.Name(), nil
-}
-
-func ForceCreateTempFile(prefix string) string {
-	p, _ := CreateTempFile(prefix)
-	return p
-}
-
-// CreateTempFileOpen creates a temporary file with the specified prefix in the
-// system's default temporary directory and returns an open file handle to it.
-func CreateTempFileOpen(prefix string) (*os.File, error) {
-	return os.CreateTemp("", prefix)
 }
 
 // TruncateFile truncates the file at the specified path to the given size in

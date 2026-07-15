@@ -7,9 +7,17 @@ import (
 	"time"
 )
 
+var transport = &http.Transport{
+	MaxIdleConns:        100,
+	MaxIdleConnsPerHost: 20,
+	IdleConnTimeout:     90 * time.Second,
+}
+
 type FetchOptions struct {
-	Headers map[string]string
-	Timeout time.Duration
+	Headers       map[string]string
+	Timeout       time.Duration
+	Jar           http.CookieJar
+	CheckRedirect func(req *http.Request, via []*http.Request) error
 }
 
 // Fetch performs an HTTP request with the specified method, URL, and options.
@@ -49,9 +57,15 @@ func FetchWithBody(method, url string, body []byte, opts ...FetchOptions) *Fetch
 		if opt.Timeout != 0 {
 			options.Timeout = max(0, opt.Timeout)
 		}
+		if opt.Jar != nil {
+			options.Jar = opt.Jar
+		}
+		if opt.CheckRedirect != nil {
+			options.CheckRedirect = opt.CheckRedirect
+		}
 	}
 
-	client := &http.Client{Timeout: options.Timeout}
+	client := &http.Client{Timeout: options.Timeout, Transport: transport}
 	req, err := http.NewRequest(method, url, bytes.NewReader(body))
 	if err != nil {
 		return newResponse(req, nil, err)

@@ -1,7 +1,7 @@
 A simple and intuitive Go library that provides convenient functions for file system operations. It offers a clean API for common tasks like reading files, manipulating paths, and watching for system events.
 
 ```go
-config, err := fsx.ReadJsonAs[Config]("./config.json")
+config, err := fsx.ReadFileJsonAs[Config]("./config.json")
 if err != nil {
   panic(err)
 }
@@ -14,8 +14,17 @@ fsx.WatchRecursive(context.Background(), config.BaseDir, func (e fsx.Event) {
 <!-- TOC -->
 
 - [Getting Started](#getting-started)
+- [API Overview](#api-overview)
+- [Checks](#checks)
+- [File Operations](#file-operations)
+- [Directory Operations](#directory-operations)
+- [Path Manipulation](#path-manipulation)
+- [File System Traversal](#file-system-traversal)
+- [File Hashing](#file-hashing)
+- [Permissions & Ownership](#permissions--ownership)
+- [Links](#links)
+- [File Watching](#file-watching)
 - [Path Anatomy](#path-anatomy)
-- [Watching](#watching)
 
 <!-- /TOC -->
 
@@ -42,127 +51,326 @@ func main() {
 }
 ```
 
+## API Overview
+
 All functions are named to reflect how they can be used and their behavior:
 
-| Function | Description                                                                                            | Examples                     |
-|----------|--------------------------------------------------------------------------------------------------------|------------------------------|
-| `*File`  | affects exclusively files or returns files, probably resulting in an error if a directory is provided. | `ReadFile()`                 |
-| `*Dir`   | affects exclusively directories or returns directories.                                                | `EmptyDir()` `GetHomeDir()`  |
-| `*Path`  | affects the path string (not the filesystem, just the string itself).                                  | `JoinPath()` `GetPathName()` |
-| `Force*` | ignore errors and return just the values. Only applicable for functions that return (value, error).    | `ForceReadFile()`            |
-| `Other`  | accept directories or files, handling them differently if necessary.                                   | `Hide()`                     |
+| Prefix | Description | Examples |
+|--------|-------------|----------|
+| `*File` | Operates on files exclusively, errors on directories | `ReadFile()`, `IsFile()`, `ListFiles()` |
+| `*Dir` | Operates on directories exclusively or returns directories | `EmptyDir()`, `GetHomeDir()`, `ListDirs()` |
+| `*Path` | Manipulates path strings (not file system) | `JoinPath()`, `GetPathName()`, `CleanPath()` |
+| `Force*` | Ignores errors and returns zero values; works with (value, error) functions | `ForceReadFile()`, `ForceSize()` |
+| `*Recursive` | Operates on directories and all subdirectories | `ListFilesRecursive()`, `ChmodRecursive()` |
+| `*Atomic` | Writes to temp file then renames for safety | `WriteFileAtomic()`, `WriteFileJsonAtomic()` |
+| Other | Handles files and directories differently as needed | `Copy()`, `Remove()`, `Hide()` |
+
+## Checks
+
+Check file system state without modifying:
+
+| Function | Description |
+|----------|-------------|
+| `Exists(p)` | Checks if a file or directory exists |
+| `IsFile(p)` | Checks if path is a regular file |
+| `IsDir(p)` | Checks if path is a directory |
+| `IsEmpty(p)` | Checks if file is empty (0 bytes) or directory is empty (no entries) |
+| `ForceIsEmpty(p)` | Like IsEmpty, ignores errors |
+| `IsSame(p1, p2)` | Checks if two paths refer to the same file (inode comparison) |
+| `IsExecutable(p)` | Checks if file has execute permission |
+| `IsReadable(p)` | Checks if file is readable |
+| `IsWritable(p)` | Checks if file is writable |
+| `IsHidden(p)` | Checks if file/dir is hidden (starts with .) |
+| `ForceIsHidden(p)` | Like IsHidden, ignores errors |
+| `IsPatternValid(pattern)` | Validates a glob pattern |
+| `IsAbsolutePath(p)` | Checks if path is absolute |
+| `IsSlashPath(p)` | Checks if path contains forward slashes |
+| `IsBackslashPath(p)` | Checks if path contains backslashes |
+| `HasExtensionPath(p)` | Checks if path has a file extension |
+
+## File Operations
+
+Reading, writing, and modifying files:
+
+### Reading Files
+
+| Function | Description |
+|----------|-------------|
+| `OpenFile(p)` | Opens file for reading, returns *os.File |
+| `ReadFile(p)` | Reads entire file as byte slice |
+| `ForceReadFile(p)` | Like ReadFile, ignores errors |
+| `ReadFileString(p)` | Reads entire file as string |
+| `ForceReadFileString(p)` | Like ReadFileString, ignores errors |
+| `ReadFileLines(p)` | Reads file and splits into lines |
+| `ForceReadFileLines(p)` | Like ReadFileLines, ignores errors |
+| `ReadFileJson(p, v)` | Reads JSON file and unmarshals to pointer |
+| `ReadFileJsonAs[T](p)` | Type-safe JSON read with generics |
+| `ForceReadFileJsonAs[T](p)` | Like ReadFileJsonAs, ignores errors |
+
+### Writing Files
+
+| Function | Description |
+|----------|-------------|
+| `CreateFile(p)` | Creates new file, returns *os.File |
+| `WriteFile(p, data)` | Writes bytes to file (overwrites) |
+| `WriteFileString(p, data)` | Writes string to file |
+| `WriteFileLines(p, lines)` | Writes lines to file (joined by newline) |
+| `WriteFileJson(p, v)` | Marshals value to JSON and writes |
+| `WriteFileAtomic(p, data)` | Writes bytes atomically (temp + rename) |
+| `WriteFileStringAtomic(p, data)` | Writes string atomically |
+| `WriteFileLinesAtomic(p, lines)` | Writes lines atomically |
+| `WriteFileJsonAtomic(p, v)` | Marshals and writes JSON atomically |
+| `AppendFile(p, data)` | Appends bytes to file (creates if missing) |
+| `AppendFileString(p, data)` | Appends string to file |
+| `AppendFileLines(p, lines)` | Appends lines to file |
+| `AppendFileJson(p, v)` | Appends JSON to file (compact, no indent) |
+
+### File Metadata
+
+| Function | Description |
+|----------|-------------|
+| `TouchFile(p)` | Creates empty file if it doesn't exist |
+| `EnsureFile(p)` | Ensures file exists (creates parent dirs) |
+| `TruncateFile(p, size)` | Truncates file to size bytes |
+| `ReplaceInFile(p, old, new)` | Replaces all occurrences of old with new |
+| `ReplaceInFileString(p, old, new)` | Like ReplaceInFile with strings |
+
+### Temporary Files
+
+| Function | Description |
+|----------|-------------|
+| `TouchTempFile(prefix)` | Creates temporary file, returns path |
+| `ForceTouchTempFile(prefix)` | Like TouchTempFile, ignores errors |
+| `CreateTempFile(prefix)` | Creates temporary file, returns *os.File |
+
+## Directory Operations
+
+Creating, managing, and inspecting directories:
+
+### Directory Inspection
+
+| Function | Description |
+|----------|-------------|
+| `ListDirs(p)` | Lists directory names in directory |
+| `ForceListDirs(p)` | Like ListDirs, ignores errors |
+| `ListDirsRecursive(p)` | Lists all subdirectories recursively (relative paths) |
+| `ForceListDirsRecursive(p)` | Like ListDirsRecursive, ignores errors |
+| `GetCurrentDir()` | Gets current working directory |
+| `ForceGetCurrentDir()` | Like GetCurrentDir, ignores errors |
+| `GetTempDir()` | Gets system temp directory |
+| `GetCacheDir()` | Gets user cache directory |
+| `ForceGetCacheDir()` | Like GetCacheDir, ignores errors |
+| `GetConfigDir()` | Gets user config directory |
+| `ForceGetConfigDir()` | Like GetConfigDir, ignores errors |
+| `GetHomeDir()` | Gets user home directory |
+| `ForceGetHomeDir()` | Like GetHomeDir, ignores errors |
+| `GetParentDir(p)` | Gets parent directory of path |
+| `ForceGetParentDir(p)` | Like GetParentDir, ignores errors |
+| `GetParentDirName(p)` | Gets name of parent directory |
+| `ForceGetParentDirName(p)` | Like GetParentDirName, ignores errors |
+| `GetDirParts(p)` | Gets all path components for directory as PathParts struct |
+
+### Directory Creation & Modification
+
+| Function | Description |
+|----------|-------------|
+| `CreateDir(p)` | Creates directory with parent dirs |
+| `EnsureDir(p)` | Ensures directory exists (errors on file) |
+| `CreateTempDir(prefix)` | Creates temporary directory |
+| `ForceCreateTempDir(prefix)` | Like CreateTempDir, ignores errors |
+| `EmptyDir(p)` | Removes all contents of directory |
+| `Chdir(p)` | Changes current working directory |
+
+## Path Manipulation
+
+String-based path operations (no file system access):
+
+| Function | Description |
+|----------|-------------|
+| `JoinPath(elem...)` | Joins elements using OS separator |
+| `JoinPathLinux(elem...)` | Joins using forward slashes |
+| `JoinPathWindows(elem...)` | Joins using backslashes |
+| `JoinPathWith(sep, elem...)` | Joins using custom separator |
+| `AbsolutePath(p)` | Converts to absolute path |
+| `ForceAbsolutePath(p)` | Like AbsolutePath, ignores errors |
+| `RelativePath(base, target)` | Computes relative path from base to target |
+| `ForceRelativePath(base, target)` | Like RelativePath, ignores errors |
+| `CleanPath(p)` | Returns shortest equivalent path |
+| `ToSlashPath(p)` | Converts to forward slashes |
+| `FromSlashPath(p)` | Converts to OS separator |
+| `ToBackslashPath(p)` | Converts to backslashes |
+| `FromBackslashPath(p)` | Converts backslashes to forward slashes |
+| `SplitPath(p)` | Splits path into components |
+| `GetPathBase(p)` | Gets filename/dirname with extension |
+| `GetPathName(p)` | Gets name without extension |
+| `GetPathExtension(p)` | Gets extension with dot (.go) |
+| `GetPathExtensionName(p)` | Gets extension without dot (go) |
+| `GetPathParent(p)` | Gets parent directory path |
+| `GetPathParentName(p)` | Gets parent directory name |
+| `GetPathVolume(p)` | Gets volume name (Windows: C:, Unix: "") |
+| `GetPathParts(p)` | Gets all components as PathParts struct |
+
+## File System Traversal
+
+Listing and walking directories:
+
+| Function | Description |
+|----------|-------------|
+| `List(p)` | Lists all entries (files + dirs) in directory |
+| `ForceList(p)` | Like List, ignores errors |
+| `ListRecursive(p)` | Lists all entries recursively (relative paths) |
+| `ForceListRecursive(p)` | Like ListRecursive, ignores errors |
+| `ListFiles(p)` | Lists files only in directory |
+| `ForceListFiles(p)` | Like ListFiles, ignores errors |
+| `ListFilesRecursive(p)` | Lists all files recursively (relative paths) |
+| `ForceListFilesRecursive(p)` | Like ListFilesRecursive, ignores errors |
+| `Walk(p, fn)` | Walks directory tree calling fn for each entry |
+| `Glob(dir, pattern)` | Matches files against glob pattern |
+| `ForceGlob(dir, pattern)` | Like Glob, ignores errors |
+| `Match(p, pattern)` | Checks if path matches glob pattern |
+| `ForceMatch(p, pattern)` | Like Match, ignores errors |
+
+## File Hashing
+
+Computing and verifying file/directory content hashes:
+
+| Function | Description |
+|----------|-------------|
+| `MD5(p)` | Computes MD5 hash of file/directory |
+| `ForceMD5(p)` | Like MD5, ignores errors |
+| `SHA1(p)` | Computes SHA1 hash of file/directory |
+| `ForceSHA1(p)` | Like SHA1, ignores errors |
+| `SHA256(p)` | Computes SHA256 hash of file/directory |
+| `ForceSHA256(p)` | Like SHA256, ignores errors |
+| `Checksum(p)` | Computes checksum (MD5) of file/directory |
+| `ForceChecksum(p)` | Like Checksum, ignores errors |
+| `Hash(p, h)` | Computes hash using provided hash.Hash |
+| `ForceHash(p, h)` | Like Hash, ignores errors |
+| `Size(p)` | Gets file size (bytes) or directory size (recursive) |
+| `ForceSize(p)` | Like Size, ignores errors |
+| `GetModTime(p)` | Gets file modification time |
+| `ForceGetModTime(p)` | Like GetModTime, ignores errors |
+| `GetInfo(p)` | Gets os.FileInfo for path |
+| `GetMode(p)` | Gets file permissions (os.FileMode) |
+
+## Permissions & Ownership
+
+Managing file permissions and ownership:
+
+| Function | Description |
+|----------|-------------|
+| `SetMode(p, mode)` | Sets file permissions |
+| `Chmod(p, mode)` | Alias for SetMode |
+| `ChmodRecursive(p, mode)` | Sets permissions recursively |
+| `ForceChmodRecursive(p, mode)` | Like ChmodRecursive, ignores errors |
+| `SetModeRecursive(p, mode)` | Alias for ChmodRecursive |
+| `ForceSetModeRecursive(p, mode)` | Like SetModeRecursive, ignores errors |
+| `SetOwner(p, uid, gid)` | Changes file owner (uid/gid) |
+| `Chown(p, uid, gid)` | Alias for SetOwner |
+| `ChownRecursive(p, uid, gid)` | Changes ownership recursively |
+| `ForceChownRecursive(p, uid, gid)` | Like ChownRecursive, ignores errors |
+| `SetOwnerRecursive(p, uid, gid)` | Alias for ChownRecursive |
+| `ForceSetOwnerRecursive(p, uid, gid)` | Like SetOwnerRecursive, ignores errors |
+| `SetHidden(p, hidden)` | Hides/unhides file by renaming (Unix) |
+| `Hide(p)` | Hides file/directory |
+| `Unhide(p)` | Unhides file/directory |
+
+## Links
+
+Creating and managing symbolic/hard links:
+
+| Function | Description |
+|----------|-------------|
+| `Link(src, dst)` | Creates hard link from src to dst |
+| `Symlink(oldname, newname)` | Creates symbolic link |
+| `Readlink(p)` | Reads destination of symbolic link |
+| `ForceReadlink(p)` | Like Readlink, ignores errors |
+
+## File System Operations
+
+General file system operations:
+
+| Function | Description |
+|----------|-------------|
+| `Copy(src, dst)` | Recursively copies file or directory |
+| `Move(src, dst)` | Moves/renames file or directory |
+| `Rename(old, new)` | Renames file or directory |
+| `Remove(p)` | Removes file or directory (recursive) |
+| `Empty(p)` | Empties file (truncates) or directory (removes contents) |
+
+## File Watching
+
+Monitoring file system changes:
+
+| Function | Description |
+|----------|-------------|
+| `NewWatcher()` | Creates new file system watcher |
+| `Watch(ctx, p, callback)` | Watches single path for changes |
+| `WatchRecursive(ctx, p, callback)` | Watches directory and subdirectories |
+| `WatchGlob(ctx, dir, pattern, callback)` | Watches with glob pattern filtering |
+
+### Watcher Methods
+
+```go
+watcher, err := fsx.NewWatcher()
+if err != nil {
+  panic(err)
+}
+defer watcher.Close()
+
+watcher.Add(path)          // Add path to watch list
+watcher.Remove(path)       // Remove path from watch list
+watcher.Has(path)          // Check if path is being watched
+watcher.WatchList()        // Get list of watched paths
+watcher.Watch(ctx, callback) // Start watching
+```
+
+### Watch Events
+
+Events contain:
+- `Op` - Operation type (bitmasked), check with `event.Has(fsx.EvtCreate)`:
+  - `EvtCreate` - File/directory created
+  - `EvtWrite` - File written
+  - `EvtRemove` - File/directory removed
+  - `EvtRename` - File/directory renamed
+  - `EvtChmod` - File permissions changed
+  - `EvtError` - Error occurred
+- `Path` - Full path of file/directory that changed
+- `Err` - Error if Op contains EvtError
 
 ## Path Anatomy
 
-You can use `GetPathParts` to extract all these infos at the same time.
+You can use `GetPathParts` or `GetDirParts` to extract all path information at once.
 
-**Absolute**
+For the path `/c/users/dev/fs/path.go`:
 
-It is the complete and absolute path, including every part.
+| Part | Example | Description |
+|------|---------|-------------|
+| **Absolute** | `/c/users/dev/fs/path.go` | Complete absolute path |
+| **Base** | `path.go` | File/directory name with extension |
+| **Name** | `path` | File/directory name without extension |
+| **Ext** | `.go` | Extension including dot |
+| **ExtName** | `go` | Extension without dot |
+| **Parent** | `/c/users/dev/fs` | Parent directory path |
+| **ParentName** | `fs` | Parent directory name |
+| **Volume** | `c:` (Windows) / `` (Unix) | Drive letter (Windows only) |
 
-```
-/c/users/dev/fs/path.go
-^^^^^^^^^^^^^^^^^^^^^^^
-       Absolute
-```
-
-**Base**
-
-It is the name of the file (or folder) including its extension.
-
-```
-/c/users/dev/fs/path.go
-                ^^^^^^^
-                 Base
-```
-
-**Name**
-
-Represents the name of the file (or folder) excluding its extension.
-
-```
-/c/users/dev/fs/path.go
-                ^^^^
-                Name
-```
-
-**Extension**
-
-It is the extension of the file, including the dot.
-
-```
-/c/users/dev/fs/path.go
-                    ^^^
-                    Ext
-```
-
-**Extension Name**
-
-Same as the extension, but excluding the dot.
-
-```
-/c/users/dev/fs/path.go
-                     ^^
-                   ExtName
-```
-
-**Parent**
-
-Called `Dir` in other libraries, the Parent is the path excluding the last part, usually the file or last directory name.
-
-```
-/c/users/dev/fs/path.go
-^^^^^^^^^^^^^^^
-     Parent
-```
-
-**Parent Name**
-
-Is is the name of the last part before the file or last directory name. Equivalent to `BasePath(ParentPath(path))`.
-
-```
-/c/users/dev/fs/path.go
-             ^^
-         ParentName
-```
-
-**Volume**
-
-For windows only, represents the volume of the path.
-
-```
-/c/users/dev/fs/path.go
- ^
- Volume
-```
-
-## Watching
-
-This library uses [fsnotify](https://github.com/fsnotify/fsnotify) internally to watch for directory and files changes.
+### PathParts Struct
 
 ```go
-fsx.Watch(context.Background(), "sample/", func (event fsx.Event) {
-  println(event.Path, "has changed")
-})
-```
+type PathParts struct {
+  Absolute   string // /c/users/dev/fs/path.go
+  Base       string // path.go
+  Name       string // path
+  Ext        string // .go
+  ExtName    string // go
+  Parent     string // /c/users/dev/fs
+  ParentName string // fs
+  Volume     string // c: (Windows), "" (Unix)
+}
 
-The event have the following information:
-
-- `Op`, a bitmasked int describing the event (or events) that happened. You can check it for specific event as `event.Op.Has(fsx.EvtCreate)`:
-  -	EvtCreate
-  -	EvtRemove
-  -	EvtWrite
-  -	EvtRename
-  -	EvtChmod
-  -	EvtError
-- `Path`, the path of the file or folder that generated the event. It will be prefixed by the watched path provided (`sample/file.txt` in the example above).
-- `Err`, for error events.
-
-Other options:
-
-```go
-fsx.NewWatcher().Watch(...)
-fsx.Watch(...)
-fsx.WatchRecursive(...)
-fsx.WatchGlob(...)
+// Get all parts at once
+parts := fsx.GetPathParts("./path/to/file.go")
+// or for directories
+parts := fsx.GetDirParts("./path/to/dir")
 ```
