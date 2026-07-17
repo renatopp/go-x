@@ -24,10 +24,10 @@
 - **slicex**
 - **strx**
 - **testx**
+- **yamlx**
 
 Others
 
-- yamlx
 - logx:
   - adding handlers for slog(?)
   - interface to slog(?)
