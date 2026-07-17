@@ -7,12 +7,6 @@ import (
 	"time"
 )
 
-var transport = &http.Transport{
-	MaxIdleConns:        100,
-	MaxIdleConnsPerHost: 20,
-	IdleConnTimeout:     90 * time.Second,
-}
-
 type FetchOptions struct {
 	Headers       map[string]string
 	Timeout       time.Duration
