@@ -47,6 +47,9 @@ type Level = slog.Level
 // of log/slog without exposing it directly.
 type Handler = slog.Handler
 
+type Source = slog.Source
+type Record = slog.Record
+
 // Filter is a Handler that can be chained with other Filters. It has a Next
 // method to set the next Handler in the chain. When a Filter handles a log
 // record, it can choose to pass it to the next Handler or not.
@@ -114,6 +117,7 @@ func argsToAttr(args []any) (Attr, []any) {
 	}
 }
 
+// var defaultLogger = NewLogger(
 // func (l *Logger) Log(level Level, msg string, kvargs ...any)
 // func (l *Logger) Debug(msg string, kvargs ...any)
 // func (l *Logger) Info(msg string, kvargs ...any)
