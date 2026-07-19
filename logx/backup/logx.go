@@ -5,6 +5,7 @@ package logx
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 )
 
@@ -53,6 +54,41 @@ func Warn(msg string, args ...any) {
 // Error logs at LevelError using the global Logger.
 func Error(msg string, args ...any) {
 	Default().log(context.Background(), LevelError, msg, args)
+}
+
+// Debugf logs at LevelDebug using fmt.Sprintf with the global Logger.
+func Debugf(format string, args ...any) {
+	Default().log(context.Background(), LevelDebug, fmt.Sprintf(format, args...), nil)
+}
+
+// Infof logs at LevelInfo using fmt.Sprintf with the global Logger.
+func Infof(format string, args ...any) {
+	Default().log(context.Background(), LevelInfo, fmt.Sprintf(format, args...), nil)
+}
+
+// Warnf logs at LevelWarn using fmt.Sprintf with the global Logger.
+func Warnf(format string, args ...any) {
+	Default().log(context.Background(), LevelWarn, fmt.Sprintf(format, args...), nil)
+}
+
+// Errorf logs at LevelError using fmt.Sprintf with the global Logger.
+func Errorf(format string, args ...any) {
+	Default().log(context.Background(), LevelError, fmt.Sprintf(format, args...), nil)
+}
+
+// Print logs at LevelInfo using the global Logger.
+func Print(msg string, args ...any) {
+	Default().log(context.Background(), LevelInfo, msg, args)
+}
+
+// PrintContext logs at LevelInfo with ctx using the global Logger.
+func PrintContext(ctx context.Context, msg string) {
+	Default().log(ctx, LevelInfo, msg, nil)
+}
+
+// Printf logs at LevelInfo using fmt.Sprintf with the global Logger.
+func Printf(format string, args ...any) {
+	Default().log(context.Background(), LevelInfo, fmt.Sprintf(format, args...), nil)
 }
 
 // DebugContext logs at LevelDebug with ctx using the global Logger.
