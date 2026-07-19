@@ -13,7 +13,7 @@
   - Adding a Repr(any).
 - **fsx**
 - **httpx**
-  - Add server utilities
+  - Add server utitilies
 - **iterx**
 - **jsonx**
 - **logx**
@@ -24,10 +24,5 @@
 - **slicex**
 - **strx**
 - **testx**
+- **timexx**
 - **yamlx**
-
-Others
-
-- logx:
-  - adding handlers for slog(?)
-  - interface to slog(?)

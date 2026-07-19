@@ -2,6 +2,7 @@ package httpx
 
 import (
 	"bytes"
+	"context"
 	"maps"
 	"net/http"
 	"time"
@@ -10,6 +11,8 @@ import (
 type FetchOptions struct {
 	Headers       map[string]string
 	Timeout       time.Duration
+	Context       context.Context
+	HttpClient    *http.Client
 	Jar           http.CookieJar
 	CheckRedirect func(req *http.Request, via []*http.Request) error
 }
@@ -51,6 +54,12 @@ func FetchWithBody(method, url string, body []byte, opts ...FetchOptions) *Fetch
 		if opt.Timeout != 0 {
 			options.Timeout = max(0, opt.Timeout)
 		}
+		if opt.Context != nil {
+			options.Context = opt.Context
+		}
+		if opt.HttpClient != nil {
+			options.HttpClient = opt.HttpClient
+		}
 		if opt.Jar != nil {
 			options.Jar = opt.Jar
 		}
@@ -59,8 +68,22 @@ func FetchWithBody(method, url string, body []byte, opts ...FetchOptions) *Fetch
 		}
 	}
 
-	client := &http.Client{Timeout: options.Timeout, Transport: transport}
-	req, err := http.NewRequest(method, url, bytes.NewReader(body))
+	ctx := options.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if options.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, options.Timeout)
+		defer cancel()
+	}
+
+	client := options.HttpClient
+	if client == nil {
+		client = &http.Client{Transport: transport, Jar: options.Jar, CheckRedirect: options.CheckRedirect}
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
 	if err != nil {
 		return newResponse(req, nil, err)
 	}
@@ -73,56 +96,68 @@ func FetchWithBody(method, url string, body []byte, opts ...FetchOptions) *Fetch
 	return newResponse(req, response, err)
 }
 
-// Get is a shortcut for performing a GET using Fetch.
+// Get is a shortcut for performing a GET using DefaultFetcher.
 func Get(url string, opts ...FetchOptions) *FetchResponse {
-	return Fetch(http.MethodGet, url, opts...)
+	return DefaultFetcher.Get(url, wrapFetchOptions(opts)...)
 }
 
-// Post is a shortcut for performing a POST using FetchWithBody.
+// Post is a shortcut for performing a POST using DefaultFetcher.
 func Post(url string, body []byte, opts ...FetchOptions) *FetchResponse {
-	return FetchWithBody(http.MethodPost, url, body, opts...)
+	return DefaultFetcher.Post(url, body, wrapFetchOptions(opts)...)
 }
 
-// Put is a shortcut for performing a PUT using FetchWithBody.
+// Put is a shortcut for performing a PUT using DefaultFetcher.
 func Put(url string, body []byte, opts ...FetchOptions) *FetchResponse {
-	return FetchWithBody(http.MethodPut, url, body, opts...)
+	return DefaultFetcher.Put(url, body, wrapFetchOptions(opts)...)
 }
 
-// Delete is a shortcut for performing a DELETE using Fetch.
+// Delete is a shortcut for performing a DELETE using DefaultFetcher.
 func Delete(url string, opts ...FetchOptions) *FetchResponse {
-	return Fetch(http.MethodDelete, url, opts...)
+	return DefaultFetcher.Delete(url, wrapFetchOptions(opts)...)
 }
 
-// Patch is a shortcut for performing a PATCH using FetchWithBody.
+// Patch is a shortcut for performing a PATCH using DefaultFetcher.
 func Patch(url string, body []byte, opts ...FetchOptions) *FetchResponse {
-	return FetchWithBody(http.MethodPatch, url, body, opts...)
+	return DefaultFetcher.Patch(url, body, wrapFetchOptions(opts)...)
 }
 
-// Head is a shortcut for performing a HEAD using Fetch.
+// Head is a shortcut for performing a HEAD using DefaultFetcher.
 func Head(url string, opts ...FetchOptions) *FetchResponse {
-	return Fetch(http.MethodHead, url, opts...)
+	return DefaultFetcher.Head(url, wrapFetchOptions(opts)...)
 }
 
-// Options is a shortcut for performing an OPTIONS using Fetch.
+// Options is a shortcut for performing an OPTIONS using DefaultFetcher.
 func Options(url string, opts ...FetchOptions) *FetchResponse {
-	return Fetch(http.MethodOptions, url, opts...)
+	return DefaultFetcher.Options(url, wrapFetchOptions(opts)...)
 }
 
-// Trace is a shortcut for performing a TRACE using Fetch.
+// Trace is a shortcut for performing a TRACE using DefaultFetcher.
 func Trace(url string, opts ...FetchOptions) *FetchResponse {
-	return Fetch(http.MethodTrace, url, opts...)
+	return DefaultFetcher.Trace(url, wrapFetchOptions(opts)...)
 }
 
-// Connect is a shortcut for performing a CONNECT using Fetch.
+// Connect is a shortcut for performing a CONNECT using DefaultFetcher.
 func Connect(url string, opts ...FetchOptions) *FetchResponse {
-	return Fetch(http.MethodConnect, url, opts...)
+	return DefaultFetcher.Connect(url, wrapFetchOptions(opts)...)
 }
 
+// SSE is a shortcut for performing a GET with the Accept header set to
+// text/event-stream using DefaultFetcher.
 func SSE(url string, opts ...FetchOptions) *FetchResponse {
 	opts = append(opts, FetchOptions{
 		Headers: map[string]string{
 			"Accept": "text/event-stream",
 		},
 	})
-	return Fetch(http.MethodGet, url, opts...)
+	return Get(url, opts...)
+}
+
+// wrapFetchOptions converts plain FetchOptions into FetcherOptions so they
+// can be passed through to a Fetcher.
+func wrapFetchOptions(opts []FetchOptions) []FetcherOptions {
+	wrapped := make([]FetcherOptions, len(opts))
+	for i, opt := range opts {
+		wrapped[i] = FetcherOptions{FetchOptions: opt}
+	}
+	return wrapped
 }

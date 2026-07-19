@@ -1,51 +1,76 @@
+// Package logx extends log/slog with a configurable Logger: levels,
+// prefixes, attributes, groups, pluggable formatters, optional
+// timestamp/caller/stacktrace capture, sampling, and rate limiting.
 package logx
 
 import (
 	"context"
-	"fmt"
-	"io"
-	"log/slog"
-
-	"github.com/renatopp/go-x/fmtx"
+	"sync/atomic"
 )
 
-// Handler is the simplest implementation of slog.Handler. It writes each
-// record as a single plain text line to the underlying writer.
-type Handler struct {
-	w     io.Writer
-	level slog.Level
+var defaultLogger atomic.Pointer[Logger]
+
+func init() {
+	defaultLogger.Store(NewLogger(Options{EnableTime: true}))
 }
 
-// NewHandler creates a new Handler that writes to w, handling records at
-// level and above.
-func NewHandler(w io.Writer, level slog.Level) *Handler {
-	return &Handler{w: w, level: level}
+// Default returns the package's global Logger, used by the package-level
+// logging functions.
+func Default() *Logger {
+	return defaultLogger.Load()
 }
 
-// Enabled reports whether the handler handles records at the given level.
-func (h *Handler) Enabled(_ context.Context, level slog.Level) bool {
-	return level >= h.level
+// SetDefault replaces the package's global Logger.
+func SetDefault(l *Logger) {
+	defaultLogger.Store(l)
 }
 
-// Handle writes the record to the underlying writer.
-func (h *Handler) Handle(_ context.Context, r slog.Record) error {
-	line := fmtx.Sprint("%s %s", fmtx.Blue(fmtx.Sprint("%s", r.Level)), fmtx.BrightBlue(r.Message))
-	r.Attrs(func(a slog.Attr) bool {
-		line += fmtx.Dim(fmtx.Sprint("\n     %s: %v", a.Key, a.Value))
-		return true
-	})
-	_, err := fmt.Fprintln(h.w, line)
-	return err
+// SetLevel changes the minimum level of the global Logger.
+func SetLevel(level Level) {
+	Default().SetLevel(level)
 }
 
-// WithAttrs returns the handler unchanged, since it does not support
-// persistent attributes.
-func (h *Handler) WithAttrs(_ []slog.Attr) slog.Handler {
-	return h
+// With returns the global Logger with args added as attributes.
+func With(args ...any) *Logger {
+	return Default().With(args...)
 }
 
-// WithGroup returns the handler unchanged, since it does not support
-// groups.
-func (h *Handler) WithGroup(_ string) slog.Handler {
-	return h
+// Debug logs at LevelDebug using the global Logger.
+func Debug(msg string, args ...any) {
+	Default().log(context.Background(), LevelDebug, msg, args)
+}
+
+// Info logs at LevelInfo using the global Logger.
+func Info(msg string, args ...any) {
+	Default().log(context.Background(), LevelInfo, msg, args)
+}
+
+// Warn logs at LevelWarn using the global Logger.
+func Warn(msg string, args ...any) {
+	Default().log(context.Background(), LevelWarn, msg, args)
+}
+
+// Error logs at LevelError using the global Logger.
+func Error(msg string, args ...any) {
+	Default().log(context.Background(), LevelError, msg, args)
+}
+
+// DebugContext logs at LevelDebug with ctx using the global Logger.
+func DebugContext(ctx context.Context, msg string, args ...any) {
+	Default().log(ctx, LevelDebug, msg, args)
+}
+
+// InfoContext logs at LevelInfo with ctx using the global Logger.
+func InfoContext(ctx context.Context, msg string, args ...any) {
+	Default().log(ctx, LevelInfo, msg, args)
+}
+
+// WarnContext logs at LevelWarn with ctx using the global Logger.
+func WarnContext(ctx context.Context, msg string, args ...any) {
+	Default().log(ctx, LevelWarn, msg, args)
+}
+
+// ErrorContext logs at LevelError with ctx using the global Logger.
+func ErrorContext(ctx context.Context, msg string, args ...any) {
+	Default().log(ctx, LevelError, msg, args)
 }
