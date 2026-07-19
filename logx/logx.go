@@ -80,3 +80,57 @@ func Pipeline(handlers ...Handler) Handler {
 	}
 	return first
 }
+
+// Copied from slog
+const badKey = "!BADKEY"
+
+// Copied from slog
+func argsToAttrSlice(args []any) []Attr {
+	var (
+		attr  Attr
+		attrs []Attr
+	)
+	for len(args) > 0 {
+		attr, args = argsToAttr(args)
+		attrs = append(attrs, attr)
+	}
+	return attrs
+}
+
+// Copied from slog
+func argsToAttr(args []any) (Attr, []any) {
+	switch x := args[0].(type) {
+	case string:
+		if len(args) == 1 {
+			return String(badKey, x), nil
+		}
+		return Any(x, args[1]), args[2:]
+
+	case Attr:
+		return x, args[1:]
+
+	default:
+		return Any(badKey, x), args[1:]
+	}
+}
+
+// func (l *Logger) Log(level Level, msg string, kvargs ...any)
+// func (l *Logger) Debug(msg string, kvargs ...any)
+// func (l *Logger) Info(msg string, kvargs ...any)
+// func (l *Logger) Warn(msg string, kvargs ...any)
+// func (l *Logger) Error(msg string, kvargs ...any)
+// func (l *Logger) Fatal(msg string, kvargs ...any)
+
+// func (l *Logger) Logf(level Level, msg string, args ...any)
+// func (l *Logger) Debugf(msg string, args ...any)
+// func (l *Logger) Infof(msg string, args ...any)
+// func (l *Logger) Warnf(msg string, args ...any)
+// func (l *Logger) Errorf(msg string, args ...any)
+// func (l *Logger) Fatalf(msg string, args ...any)
+
+// func (l *Logger) Logc(ctx context.Context, level Level, msg string, kvargs ...any)
+// func (l *Logger) Debugc(ctx context.Context, msg string, kvargs ...any)
+// func (l *Logger) Infoc(ctx context.Context, msg string, kvargs ...any)
+// func (l *Logger) Warnc(ctx context.Context, msg string, kvargs ...any)
+// func (l *Logger) Errorc(ctx context.Context, msg string, kvargs ...any)
+// func (l *Logger) Fatalc(ctx context.Context, msg string, kvargs ...any)
