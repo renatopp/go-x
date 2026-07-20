@@ -6,19 +6,29 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"sync"
 	"time"
 )
+
+type OutputParts struct {
+	Time    string
+	Level   string
+	Caller  string
+	Message string
+	Attrs   []string
+}
 
 type LevelStyle struct {
 	LevelFormatter  func(level slog.Level) string
 	TimeFormatter   func(time time.Time) string
 	CallerFormatter func(source *Source) string
 	MsgFormatter    func(msg string) string
-	AttrFormatter   func(attr slog.Attr) string
-	OutputFormatter func(time, level, caller, msg string, attrs []string) string
+	AttrFormatter   func(attr Attr, groups []string) string
+	OutputFormatter func(parts OutputParts) string
 }
 
 type ColoredHandler struct {
+	mu           sync.RWMutex
 	writer       io.Writer
 	levelStyles  map[Level]*LevelStyle
 	defaultStyle *LevelStyle
@@ -37,6 +47,8 @@ func NewColoredHandler() *ColoredHandler {
 }
 
 func (h *ColoredHandler) WithWriter(writer io.Writer) *ColoredHandler {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	if writer == nil {
 		h.writer = nil
 	} else {
@@ -46,6 +58,8 @@ func (h *ColoredHandler) WithWriter(writer io.Writer) *ColoredHandler {
 }
 
 func (h *ColoredHandler) WithLevelStyle(level Level, style *LevelStyle) *ColoredHandler {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	if style == nil {
 		delete(h.levelStyles, level)
 	} else {
@@ -55,6 +69,8 @@ func (h *ColoredHandler) WithLevelStyle(level Level, style *LevelStyle) *Colored
 }
 
 func (h *ColoredHandler) WithDefaultStyle(style *LevelStyle) *ColoredHandler {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	if style == nil {
 		h.defaultStyle = nil
 	} else {
@@ -68,6 +84,8 @@ func (h *ColoredHandler) Enabled(_ context.Context, level slog.Level) bool {
 }
 
 func (h *ColoredHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 	return &ColoredHandler{
 		levelStyles:  h.levelStyles,
 		defaultStyle: h.defaultStyle,
@@ -77,6 +95,8 @@ func (h *ColoredHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 }
 
 func (h *ColoredHandler) WithGroup(name string) slog.Handler {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 	return &ColoredHandler{
 		levelStyles:  h.levelStyles,
 		defaultStyle: h.defaultStyle,
@@ -85,11 +105,38 @@ func (h *ColoredHandler) WithGroup(name string) slog.Handler {
 	}
 }
 
+func (h *ColoredHandler) collectAttrs(record slog.Record, groups []string, formatter func(Attr, []string) string, result *[]string) {
+	record.Attrs(func(a slog.Attr) bool {
+		if a.Value.Kind() == slog.KindGroup {
+			newGroups := append(groups, a.Key)
+			h.walkAttrs(a.Value.Group(), newGroups, formatter, result)
+		} else {
+			*result = append(*result, formatter(a, groups))
+		}
+		return true
+	})
+}
+
+func (h *ColoredHandler) walkAttrs(attrs []slog.Attr, groups []string, formatter func(Attr, []string) string, result *[]string) {
+	for _, a := range attrs {
+		if a.Value.Kind() == slog.KindGroup {
+			newGroups := append(groups, a.Key)
+			h.walkAttrs(a.Value.Group(), newGroups, formatter, result)
+		} else {
+			*result = append(*result, formatter(a, groups))
+		}
+	}
+}
+
 func (h *ColoredHandler) Handle(_ context.Context, record slog.Record) error {
+	h.mu.RLock()
 	style := h.defaultStyle
 	if s, ok := h.levelStyles[Level(record.Level)]; ok {
 		style = s
 	}
+	writer := h.writer
+	groups := h.groups
+	h.mu.RUnlock()
 
 	if style == nil {
 		return nil
@@ -117,17 +164,20 @@ func (h *ColoredHandler) Handle(_ context.Context, record slog.Record) error {
 
 	attrs := []string{}
 	if style.AttrFormatter != nil {
-		record.Attrs(func(a slog.Attr) bool {
-			attrs = append(attrs, style.AttrFormatter(a))
-			return true
-		})
+		h.collectAttrs(record, groups, style.AttrFormatter, &attrs)
 	}
 
 	output := ""
 	if style.OutputFormatter != nil {
-		output = style.OutputFormatter(timestamp, level, caller, msg, attrs)
+		output = style.OutputFormatter(OutputParts{
+			Time:    timestamp,
+			Level:   level,
+			Caller:  caller,
+			Message: msg,
+			Attrs:   attrs,
+		})
 	}
 
-	fmt.Fprintln(h.writer, output)
+	fmt.Fprintln(writer, output)
 	return nil
 }
