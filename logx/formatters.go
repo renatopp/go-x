@@ -23,15 +23,15 @@ func ColoredLevelFormatter(level Level) string {
 	case LevelDebug:
 		return "\033[1;38;5;63mDEBUG\033[0m"
 	case LevelInfo:
-		return "\033[1;38;5;86mINFO\033[0m"
+		return "\033[1;38;5;86mINFO \033[0m"
 	case LevelWarn:
-		return "\033[1;38;5;192mWARN\033[0m"
+		return "\033[1;38;5;192mWARN \033[0m"
 	case LevelError:
 		return "\033[1;38;5;204mERROR\033[0m"
 	case LevelFatal:
 		return "\033[1;38;5;134mFATAL\033[0m"
 	default:
-		return "\033[1;38;5;245mUNKNOWN\033[0m"
+		return "\033[1;38;5;245mUNKN \033[0m"
 	}
 }
 

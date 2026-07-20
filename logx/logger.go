@@ -156,8 +156,6 @@ func (l *Logger) log(ctx context.Context, level Level, msg string, kvargs ...any
 		return
 	}
 
-	record := slog.NewRecord(time.Now(), level, msg, 0)
-
 	var pc uintptr
 	if l.callerInfo {
 		var pcs [1]uintptr
@@ -167,5 +165,5 @@ func (l *Logger) log(ctx context.Context, level Level, msg string, kvargs ...any
 	}
 	r := slog.NewRecord(time.Now(), level, msg, pc)
 	r.Add(kvargs...)
-	l.handler.Handle(ctx, record)
+	l.handler.Handle(ctx, r)
 }

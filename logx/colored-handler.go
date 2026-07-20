@@ -38,11 +38,18 @@ type ColoredHandler struct {
 
 func NewColoredHandler() *ColoredHandler {
 	return &ColoredHandler{
-		writer:       os.Stdout,
-		levelStyles:  make(map[Level]*LevelStyle),
-		defaultStyle: &LevelStyle{},
-		attrs:        []slog.Attr{},
-		groups:       []string{},
+		writer:      os.Stdout,
+		levelStyles: make(map[Level]*LevelStyle),
+		defaultStyle: &LevelStyle{
+			LevelFormatter:  ColoredLevelFormatter,
+			TimeFormatter:   PMTimeFormatter,
+			CallerFormatter: CallerFormatter,
+			MsgFormatter:    func(msg string) string { return msg },
+			AttrFormatter:   AttrFormatter,
+			OutputFormatter: CommonOutputFormatter,
+		},
+		attrs:  []slog.Attr{},
+		groups: []string{},
 	}
 }
 
@@ -153,8 +160,9 @@ func (h *ColoredHandler) Handle(_ context.Context, record slog.Record) error {
 	}
 
 	caller := ""
-	if style.CallerFormatter != nil {
-		caller = style.CallerFormatter(record.Source())
+	source := record.Source()
+	if style.CallerFormatter != nil && source != nil {
+		caller = style.CallerFormatter(source)
 	}
 
 	msg := ""
