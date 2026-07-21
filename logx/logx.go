@@ -1,7 +1,9 @@
 package logx
 
 import (
+	"context"
 	"log/slog"
+	"sync/atomic"
 	"time"
 )
 
@@ -117,24 +119,69 @@ func argsToAttr(args []any) (Attr, []any) {
 	}
 }
 
-// var defaultLogger = NewLogger(
-// func (l *Logger) Log(level Level, msg string, kvargs ...any)
-// func (l *Logger) Debug(msg string, kvargs ...any)
-// func (l *Logger) Info(msg string, kvargs ...any)
-// func (l *Logger) Warn(msg string, kvargs ...any)
-// func (l *Logger) Error(msg string, kvargs ...any)
-// func (l *Logger) Fatal(msg string, kvargs ...any)
+var defaultLogger = atomic.Pointer[Logger]{}
 
-// func (l *Logger) Logf(level Level, msg string, args ...any)
-// func (l *Logger) Debugf(msg string, args ...any)
-// func (l *Logger) Infof(msg string, args ...any)
-// func (l *Logger) Warnf(msg string, args ...any)
-// func (l *Logger) Errorf(msg string, args ...any)
-// func (l *Logger) Fatalf(msg string, args ...any)
+func init() {
+	defaultLogger.Store(NewLogger(NewColoredHandler()))
+}
 
-// func (l *Logger) Logc(ctx context.Context, level Level, msg string, kvargs ...any)
-// func (l *Logger) Debugc(ctx context.Context, msg string, kvargs ...any)
-// func (l *Logger) Infoc(ctx context.Context, msg string, kvargs ...any)
-// func (l *Logger) Warnc(ctx context.Context, msg string, kvargs ...any)
-// func (l *Logger) Errorc(ctx context.Context, msg string, kvargs ...any)
-// func (l *Logger) Fatalc(ctx context.Context, msg string, kvargs ...any)
+func DefaultLogger() *Logger {
+	return defaultLogger.Load()
+}
+
+func WithTimestamp(v bool) *Logger {
+	return DefaultLogger().WithTimestamp(v)
+}
+
+func WithCallerInfo(v bool) *Logger {
+	return DefaultLogger().WithCallerInfo(v)
+}
+
+func WithSkipCallers(n int) *Logger {
+	return DefaultLogger().WithSkipCallers(n)
+}
+
+func WithLevel(level Level) *Logger {
+	return DefaultLogger().WithLevel(level)
+}
+
+func WithAttributes(attrs ...any) *Logger {
+	return DefaultLogger().WithAttributes(attrs...)
+}
+
+func WithGroup(name string) *Logger {
+	return DefaultLogger().WithGroup(name)
+}
+
+func Log(level Level, msg string, kvargs ...any) { DefaultLogger().Log(level, msg, kvargs...) }
+func Debug(msg string, kvargs ...any)            { DefaultLogger().Debug(msg, kvargs...) }
+func Info(msg string, kvargs ...any)             { DefaultLogger().Info(msg, kvargs...) }
+func Warn(msg string, kvargs ...any)             { DefaultLogger().Warn(msg, kvargs...) }
+func Error(msg string, kvargs ...any)            { DefaultLogger().Error(msg, kvargs...) }
+func Fatal(msg string, kvargs ...any)            { DefaultLogger().Fatal(msg, kvargs...) }
+
+func Logf(level Level, msg string, args ...any) { DefaultLogger().Logf(level, msg, args...) }
+func Debugf(msg string, args ...any)            { DefaultLogger().Debugf(msg, args...) }
+func Infof(msg string, args ...any)             { DefaultLogger().Infof(msg, args...) }
+func Warnf(msg string, args ...any)             { DefaultLogger().Warnf(msg, args...) }
+func Errorf(msg string, args ...any)            { DefaultLogger().Errorf(msg, args...) }
+func Fatalf(msg string, args ...any)            { DefaultLogger().Fatalf(msg, args...) }
+
+func Logc(ctx context.Context, level Level, msg string, kvargs ...any) {
+	DefaultLogger().Logc(ctx, level, msg, kvargs...)
+}
+func Debugc(ctx context.Context, msg string, kvargs ...any) {
+	DefaultLogger().Debugc(ctx, msg, kvargs...)
+}
+func Infoc(ctx context.Context, msg string, kvargs ...any) {
+	DefaultLogger().Infoc(ctx, msg, kvargs...)
+}
+func Warnc(ctx context.Context, msg string, kvargs ...any) {
+	DefaultLogger().Warnc(ctx, msg, kvargs...)
+}
+func Errorc(ctx context.Context, msg string, kvargs ...any) {
+	DefaultLogger().Errorc(ctx, msg, kvargs...)
+}
+func Fatalc(ctx context.Context, msg string, kvargs ...any) {
+	DefaultLogger().Fatalc(ctx, msg, kvargs...)
+}

@@ -12,6 +12,7 @@ import (
 type Logger struct {
 	mu          sync.Mutex
 	level       Level
+	timestamp   bool
 	callerInfo  bool
 	skipCallers int
 	handler     Handler
@@ -20,6 +21,7 @@ type Logger struct {
 func NewLogger(handler Handler) *Logger {
 	return &Logger{
 		level:       LevelInfo,
+		timestamp:   false,
 		callerInfo:  false,
 		skipCallers: 0,
 		handler:     handler,
@@ -52,10 +54,24 @@ func (l *Logger) WithLevel(level Level) *Logger {
 	return l
 }
 
+func (l *Logger) WithTimestamp(v bool) *Logger {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.timestamp = v
+	return l
+}
+
 func (l *Logger) WithCallerInfo(v bool) *Logger {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.callerInfo = v
+	return l
+}
+
+func (l *Logger) WithSkipCallers(n int) *Logger {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.skipCallers = n
 	return l
 }
 
@@ -163,7 +179,12 @@ func (l *Logger) log(ctx context.Context, level Level, msg string, kvargs ...any
 		runtime.Callers(3, pcs[l.skipCallers:])
 		pc = pcs[0]
 	}
-	r := slog.NewRecord(time.Now(), level, msg, pc)
+
+	var t time.Time
+	if l.timestamp {
+		t = time.Now()
+	}
+	r := slog.NewRecord(t, level, msg, pc)
 	r.Add(kvargs...)
 	l.handler.Handle(ctx, r)
 }
