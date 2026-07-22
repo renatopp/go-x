@@ -1,3 +1,9 @@
+# NEXT (TBD)
+
+- Adding `execx`.
+- Fixing many bugs on `logx`.
+- Readding `httpx`.
+
 # 0.2.0 (2026-07-20)
 
 - Adding `yamlx`.

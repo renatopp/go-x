@@ -16,13 +16,55 @@ func (h recordingHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) 
 	*h.order = append(*h.order, h.name)
 }
 
+// recordingMiddleware appends "<name>:before" then calls next, then appends
+// "<name>:after", letting tests assert nesting order.
+func recordingMiddleware(name string, order *[]string) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+			*order = append(*order, name+":before")
+			if next != nil {
+				next.ServeHTTP(res, req)
+			}
+			*order = append(*order, name+":after")
+		})
+	}
+}
+
+func TestChainRunsMiddlewaresInDeclarationOrder(t *testing.T) {
+	var order []string
+	final := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		order = append(order, "final")
+	})
+
+	handler := Chain(recordingMiddleware("a", &order), recordingMiddleware("b", &order))(final)
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
+
+	want := []string{"a:before", "b:before", "final", "b:after", "a:after"}
+	if !equalSlices(order, want) {
+		t.Errorf("expected order %v, got %v", want, order)
+	}
+}
+
+func TestChainWithNoMiddlewaresReturnsFinalHandlerUnchanged(t *testing.T) {
+	var called bool
+	final := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		called = true
+	})
+
+	handler := Chain()(final)
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if !called {
+		t.Error("expected final handler to run")
+	}
+}
+
 func TestAsMiddlewareRunsHandlerBeforeNext(t *testing.T) {
 	var order []string
 	self := recordingHandler{name: "self", order: &order}
 	next := recordingHandler{name: "next", order: &order}
 
-	mw := AsMiddleware(self)
-	handler := mw(next)
+	handler := AsMiddleware(self)(next)
 	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
 
 	if got := []string{"self", "next"}; !equalSlices(order, got) {
@@ -42,57 +84,6 @@ func TestAsMiddlewareWithNilNext(t *testing.T) {
 	}
 }
 
-func TestChainRunsHandlersInOrder(t *testing.T) {
-	var order []string
-	h1 := recordingHandler{name: "h1", order: &order}
-	h2 := recordingHandler{name: "h2", order: &order}
-	h3 := recordingHandler{name: "h3", order: &order}
-
-	handler := Chain(h1, h2, h3)
-	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
-
-	if got := []string{"h1", "h2", "h3"}; !equalSlices(order, got) {
-		t.Errorf("expected order %v, got %v", got, order)
-	}
-}
-
-func TestChainWithSingleHandler(t *testing.T) {
-	var order []string
-	h1 := recordingHandler{name: "h1", order: &order}
-
-	handler := Chain(h1)
-	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
-
-	if got := []string{"h1"}; !equalSlices(order, got) {
-		t.Errorf("expected order %v, got %v", got, order)
-	}
-}
-
-func TestChainWithNoHandlersDoesNotPanic(t *testing.T) {
-	handler := Chain()
-	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
-}
-
-func TestChainSharesRequestAndResponse(t *testing.T) {
-	h1 := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		req.Header.Set("X-Seen", "h1")
-		res.Header().Set("X-From", "h1")
-	})
-	h2 := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		if req.Header.Get("X-Seen") != "h1" {
-			t.Errorf("expected h2 to see request mutated by h1")
-		}
-		res.Header().Set("X-From", res.Header().Get("X-From")+",h2")
-	})
-
-	res := httptest.NewRecorder()
-	Chain(h1, h2).ServeHTTP(res, httptest.NewRequest(http.MethodGet, "/", nil))
-
-	if got := res.Header().Get("X-From"); got != "h1,h2" {
-		t.Errorf("expected shared response header %q, got %q", "h1,h2", got)
-	}
-}
-
 func equalSlices(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
@@ -104,3 +95,4 @@ func equalSlices(a, b []string) bool {
 	}
 	return true
 }
+
