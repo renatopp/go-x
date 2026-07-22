@@ -19,3 +19,5 @@ Packages:
 - **`slicex`** -- slice utilities. Replaces `slices`.
 - **`strx`** -- string utilities. Adding lots of features, including tables and trees renderers. Replaces `strings` and partially `unicode`.
 - **`testx`** -- testing utilities.
+- **`timex`** -- time-based utilities, such as backoff and rate limiter functions.
+- **`yamlx`** -- same as jsonx, but using `goccy/go-yaml`.

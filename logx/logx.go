@@ -2,6 +2,7 @@ package logx
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"sync/atomic"
 	"time"
@@ -117,6 +118,14 @@ func argsToAttr(args []any) (Attr, []any) {
 	default:
 		return Any(badKey, x), args[1:]
 	}
+}
+
+func NewPlainTextHandler(std io.Writer) *slog.TextHandler {
+	return slog.NewTextHandler(std, nil)
+}
+
+func NewJsonHandler(std io.Writer) *slog.JSONHandler {
+	return slog.NewJSONHandler(std, nil)
 }
 
 var defaultLogger = atomic.Pointer[Logger]{}

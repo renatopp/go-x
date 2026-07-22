@@ -28,6 +28,20 @@ func NewColoredHandler() *ColoredHandler {
 		mu:                 sync.RWMutex{},
 		writer:             os.Stdout,
 		levelFormatter:     ColoredLevelFormatter,
+		timeFormatter:      nil,
+		callerFormatter:    nil,
+		messageFormatter:   func(msg string, _ Level) string { return msg },
+		attributeFormatter: AttrFormatter,
+		attrs:              []slog.Attr{},
+		groups:             []string{},
+	}
+}
+
+func NewFullColoredHandler() *ColoredHandler {
+	return &ColoredHandler{
+		mu:                 sync.RWMutex{},
+		writer:             os.Stdout,
+		levelFormatter:     ColoredLevelFormatter,
 		timeFormatter:      PMTimeFormatter,
 		callerFormatter:    CallerFormatter,
 		messageFormatter:   func(msg string, _ Level) string { return msg },
@@ -90,6 +104,9 @@ func (h *ColoredHandler) Enabled(_ context.Context, level slog.Level) bool {
 func (h *ColoredHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
+	newAttrs := make([]slog.Attr, len(h.attrs)+len(attrs))
+	copy(newAttrs, h.attrs)
+	copy(newAttrs[len(h.attrs):], attrs)
 	return &ColoredHandler{
 		writer:             h.writer,
 		levelFormatter:     h.levelFormatter,
@@ -97,7 +114,7 @@ func (h *ColoredHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 		callerFormatter:    h.callerFormatter,
 		messageFormatter:   h.messageFormatter,
 		attributeFormatter: h.attributeFormatter,
-		attrs:              append(h.attrs, attrs...),
+		attrs:              newAttrs,
 		groups:             h.groups,
 	}
 }
@@ -105,6 +122,9 @@ func (h *ColoredHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 func (h *ColoredHandler) WithGroup(name string) slog.Handler {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
+	newGroups := make([]string, len(h.groups)+1)
+	copy(newGroups, h.groups)
+	newGroups[len(h.groups)] = name
 	return &ColoredHandler{
 		writer:             h.writer,
 		levelFormatter:     h.levelFormatter,
@@ -113,30 +133,7 @@ func (h *ColoredHandler) WithGroup(name string) slog.Handler {
 		messageFormatter:   h.messageFormatter,
 		attributeFormatter: h.attributeFormatter,
 		attrs:              h.attrs,
-		groups:             append(h.groups, name),
-	}
-}
-
-func (h *ColoredHandler) collectAttrs(record Record, groups []string, result *[]string) {
-	record.Attrs(func(a slog.Attr) bool {
-		if a.Value.Kind() == slog.KindGroup {
-			newGroups := append(groups, a.Key)
-			h.walkAttrs(record, a.Value.Group(), newGroups, result)
-		} else {
-			*result = append(*result, h.attributeFormatter(a, groups, record.Level))
-		}
-		return true
-	})
-}
-
-func (h *ColoredHandler) walkAttrs(record Record, attrs []Attr, groups []string, result *[]string) {
-	for _, a := range attrs {
-		if a.Value.Kind() == slog.KindGroup {
-			newGroups := append(groups, a.Key)
-			h.walkAttrs(record, a.Value.Group(), newGroups, result)
-		} else {
-			*result = append(*result, h.attributeFormatter(a, groups, record.Level))
-		}
+		groups:             newGroups,
 	}
 }
 
@@ -144,32 +141,39 @@ func (h *ColoredHandler) Handle(_ context.Context, record slog.Record) error {
 	h.mu.RLock()
 	writer := h.writer
 	groups := h.groups
+	boundAttrs := h.attrs
+	levelFormatter := h.levelFormatter
+	timeFormatter := h.timeFormatter
+	callerFormatter := h.callerFormatter
+	messageFormatter := h.messageFormatter
+	attributeFormatter := h.attributeFormatter
 	h.mu.RUnlock()
 
 	timestamp := ""
-	if h.timeFormatter != nil && !record.Time.IsZero() {
-		timestamp = h.timeFormatter(record.Time, record.Level)
+	if timeFormatter != nil && !record.Time.IsZero() {
+		timestamp = timeFormatter(record.Time, record.Level)
 	}
 
 	level := ""
-	if h.levelFormatter != nil {
-		level = h.levelFormatter(record.Level)
+	if levelFormatter != nil {
+		level = levelFormatter(record.Level)
 	}
 
 	caller := ""
 	source := record.Source()
-	if h.callerFormatter != nil && source != nil {
-		caller = h.callerFormatter(source, record.Level)
+	if callerFormatter != nil && source != nil {
+		caller = callerFormatter(source, record.Level)
 	}
 
 	msg := ""
-	if h.messageFormatter != nil {
-		msg = h.messageFormatter(record.Message, record.Level)
+	if messageFormatter != nil {
+		msg = messageFormatter(record.Message, record.Level)
 	}
 
 	attrs := []string{}
-	if h.attributeFormatter != nil {
-		h.collectAttrs(record, groups, &attrs)
+	if attributeFormatter != nil {
+		h.walkAttrs(record, attributeFormatter, boundAttrs, groups, &attrs)
+		h.collectAttrs(record, attributeFormatter, groups, &attrs)
 	}
 
 	builder := strings.Builder{}
@@ -200,4 +204,27 @@ func (h *ColoredHandler) Handle(_ context.Context, record slog.Record) error {
 
 	fmt.Fprintln(writer, builder.String())
 	return nil
+}
+
+func (h *ColoredHandler) collectAttrs(record Record, formatter func(Attr, []string, Level) string, groups []string, result *[]string) {
+	record.Attrs(func(a slog.Attr) bool {
+		if a.Value.Kind() == slog.KindGroup {
+			newGroups := append(groups, a.Key)
+			h.walkAttrs(record, formatter, a.Value.Group(), newGroups, result)
+		} else {
+			*result = append(*result, formatter(a, groups, record.Level))
+		}
+		return true
+	})
+}
+
+func (h *ColoredHandler) walkAttrs(record Record, formatter func(Attr, []string, Level) string, attrs []Attr, groups []string, result *[]string) {
+	for _, a := range attrs {
+		if a.Value.Kind() == slog.KindGroup {
+			newGroups := append(groups, a.Key)
+			h.walkAttrs(record, formatter, a.Value.Group(), newGroups, result)
+		} else {
+			*result = append(*result, formatter(a, groups, record.Level))
+		}
+	}
 }
