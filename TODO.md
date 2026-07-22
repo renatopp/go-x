@@ -9,11 +9,13 @@
   - LRU Cache
   - Ring
 - **envx**
+- **execx**
+  - Implement the Unwrap function?
 - **fmtx**
   - Adding a Repr(any).
 - **fsx**
 - **httpx**
-  - Add server utitilies
+  - Recreate the fetcher
 - **iterx**
 - **jsonx**
 - **logx**
@@ -24,5 +26,5 @@
 - **slicex**
 - **strx**
 - **testx**
-- **timexx**
+- **timex**
 - **yamlx**

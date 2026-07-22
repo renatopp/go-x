@@ -1,233 +1,143 @@
-package envx_test
+package envx
 
 import (
+	"sort"
 	"testing"
-	"time"
-
-	"github.com/renatopp/go-x/envx"
 )
 
-type testConfig struct {
-	Name    string        `env:"TC_NAME"`
-	Port    uint32        `env:"TC_PORT,default=9090"`
-	Debug   bool          `env:"TC_DEBUG"`
-	Score   float64       `env:"TC_SCORE"`
-	Timeout time.Duration `env:"TC_TIMEOUT,default=10s"`
-	Workers int           `env:"TC_WORKERS"`
-	ignored string        `env:"TC_IGNORED"`
-	NoTag   string
+func TestHas(t *testing.T) {
+	t.Setenv("EX_HAS", "value")
+	if !Has("EX_HAS") {
+		t.Errorf("Has: got false, want true")
+	}
+	if Has("EX_HAS_MISSING") {
+		t.Errorf("Has: got true, want false")
+	}
 }
 
-func TestUnmarshal(t *testing.T) {
-	t.Setenv("TC_NAME", "matchmaking")
-	t.Setenv("TC_PORT", "8080")
-	t.Setenv("TC_DEBUG", "true")
-	t.Setenv("TC_SCORE", "9.5")
-	t.Setenv("TC_TIMEOUT", "30s")
-	t.Setenv("TC_WORKERS", "-4")
+func TestGet(t *testing.T) {
+	t.Setenv("EX_GET", "value")
+	if got := Get("EX_GET"); got != "value" {
+		t.Errorf("Get: got %q, want %q", got, "value")
+	}
+	if got := Get("EX_GET_MISSING"); got != "" {
+		t.Errorf("Get: got %q, want empty string", got)
+	}
+}
 
-	var cfg testConfig
-	if err := envx.Unmarshal(&cfg); err != nil {
+func TestGetOr(t *testing.T) {
+	t.Setenv("EX_GETOR", "value")
+	if got := GetOr("EX_GETOR", "default"); got != "value" {
+		t.Errorf("GetOr: got %q, want %q", got, "value")
+	}
+	if got := GetOr("EX_GETOR_MISSING", "default"); got != "default" {
+		t.Errorf("GetOr: got %q, want %q", got, "default")
+	}
+}
+
+func TestGetOk(t *testing.T) {
+	t.Setenv("EX_GETOK", "value")
+
+	got, ok := GetOk("EX_GETOK")
+	if !ok {
+		t.Errorf("GetOk: got ok=false, want true")
+	}
+	if got != "value" {
+		t.Errorf("GetOk: got %q, want %q", got, "value")
+	}
+
+	got, ok = GetOk("EX_GETOK_MISSING")
+	if ok {
+		t.Errorf("GetOk: got ok=true, want false")
+	}
+	if got != "" {
+		t.Errorf("GetOk: got %q, want empty string", got)
+	}
+}
+
+func TestSet(t *testing.T) {
+	if err := Set("EX_SET", "value"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	if cfg.Name != "matchmaking" {
-		t.Errorf("Name: got %q, want %q", cfg.Name, "matchmaking")
-	}
-	if cfg.Port != 8080 {
-		t.Errorf("Port: got %d, want 8080", cfg.Port)
-	}
-	if !cfg.Debug {
-		t.Errorf("Debug: got false, want true")
-	}
-	if cfg.Score != 9.5 {
-		t.Errorf("Score: got %f, want 9.5", cfg.Score)
-	}
-	if cfg.Timeout != 30*time.Second {
-		t.Errorf("Timeout: got %v, want 30s", cfg.Timeout)
-	}
-	if cfg.Workers != -4 {
-		t.Errorf("Workers: got %d, want -4", cfg.Workers)
+	if got := Get("EX_SET"); got != "value" {
+		t.Errorf("Set: got %q, want %q", got, "value")
 	}
 }
 
-func TestUnmarshal_DefaultValues(t *testing.T) {
-	var cfg testConfig
-	if err := envx.Unmarshal(&cfg); err != nil {
+func TestUnset(t *testing.T) {
+	t.Setenv("EX_UNSET", "value")
+	if err := Unset("EX_UNSET"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.Port != 9090 {
-		t.Errorf("Port default: got %d, want 9090", cfg.Port)
-	}
-	if cfg.Timeout != 10*time.Second {
-		t.Errorf("Timeout default: got %v, want 10s", cfg.Timeout)
+	if Has("EX_UNSET") {
+		t.Errorf("Unset: expected variable to be unset")
 	}
 }
 
-func TestUnmarshal_EnvOverridesDefault(t *testing.T) {
-	t.Setenv("TC_PORT", "3000")
-	t.Setenv("TC_TIMEOUT", "1m")
-
-	var cfg testConfig
-	if err := envx.Unmarshal(&cfg); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestClean(t *testing.T) {
+	t.Setenv("EX_CLEAN", "value")
+	Clean()
+	if Has("EX_CLEAN") {
+		t.Errorf("Clean: expected all variables to be unset")
 	}
-	if cfg.Port != 3000 {
-		t.Errorf("Port override: got %d, want 3000", cfg.Port)
-	}
-	if cfg.Timeout != time.Minute {
-		t.Errorf("Timeout override: got %v, want 1m", cfg.Timeout)
+	if len(List()) != 0 {
+		t.Errorf("Clean: expected no environment variables, got %v", List())
 	}
 }
 
-func TestUnmarshal_MissingEnvLeavesZeroValue(t *testing.T) {
-	var cfg testConfig
-	if err := envx.Unmarshal(&cfg); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestExpand(t *testing.T) {
+	t.Setenv("EX_EXPAND", "world")
+	if got := Expand("hello ${EX_EXPAND}"); got != "hello world" {
+		t.Errorf("Expand: got %q, want %q", got, "hello world")
 	}
-	if cfg.Name != "" || cfg.Workers != 0 {
-		t.Errorf("expected zero values, got Name=%q Workers=%d", cfg.Name, cfg.Workers)
-	}
-}
-
-func TestUnmarshal_InvalidValue(t *testing.T) {
-	t.Setenv("TC_PORT", "not-a-number")
-
-	var cfg testConfig
-	if err := envx.Unmarshal(&cfg); err == nil {
-		t.Fatal("expected error for invalid uint, got nil")
+	if got := Expand("hello $EX_EXPAND"); got != "hello world" {
+		t.Errorf("Expand: got %q, want %q", got, "hello world")
 	}
 }
 
-func TestUnmarshal_RequiresPointerToStruct(t *testing.T) {
-	if err := envx.Unmarshal("not a struct"); err == nil {
-		t.Fatal("expected error for non-struct, got nil")
+func TestList(t *testing.T) {
+	Clean()
+	t.Setenv("EX_LIST", "value")
+
+	list := List()
+	found := false
+	for _, entry := range list {
+		if entry == "EX_LIST=value" {
+			found = true
+			break
+		}
 	}
-	cfg := testConfig{}
-	if err := envx.Unmarshal(cfg); err == nil {
-		t.Fatal("expected error for non-pointer, got nil")
-	}
-}
-
-// ---- required ---------------------------------------------------------------
-
-type requiredConfig struct {
-	Token string `env:"TC_TOKEN,required"`
-}
-
-func TestUnmarshal_RequiredPresent(t *testing.T) {
-	t.Setenv("TC_TOKEN", "secret")
-
-	var cfg requiredConfig
-	if err := envx.Unmarshal(&cfg); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if cfg.Token != "secret" {
-		t.Errorf("Token: got %q, want %q", cfg.Token, "secret")
+	if !found {
+		t.Errorf("List: got %v, want to contain %q", list, "EX_LIST=value")
 	}
 }
 
-func TestUnmarshal_RequiredMissing(t *testing.T) {
-	var cfg requiredConfig
-	if err := envx.Unmarshal(&cfg); err == nil {
-		t.Fatal("expected error for missing required field, got nil")
+func TestKeys(t *testing.T) {
+	Clean()
+	t.Setenv("EX_KEYS_A", "1")
+	t.Setenv("EX_KEYS_B", "2")
+
+	keys := Keys()
+	sort.Strings(keys)
+
+	want := []string{"EX_KEYS_A", "EX_KEYS_B"}
+	if len(keys) != len(want) {
+		t.Fatalf("Keys: got %v, want %v", keys, want)
+	}
+	for i := range want {
+		if keys[i] != want[i] {
+			t.Errorf("Keys: got %v, want %v", keys, want)
+			break
+		}
 	}
 }
 
-// ---- slices -----------------------------------------------------------------
+func TestMap(t *testing.T) {
+	Clean()
+	t.Setenv("EX_MAP", "value")
 
-type sliceConfig struct {
-	Tags   []string        `env:"TC_TAGS,default=a,b,c"`
-	Ports  []uint16        `env:"TC_PORTS"`
-	Scores []float64       `env:"TC_SCORES"`
-	Delays []time.Duration `env:"TC_DELAYS"`
-}
-
-func TestUnmarshal_SliceFromEnv(t *testing.T) {
-	t.Setenv("TC_PORTS", "8080,8081,8082")
-	t.Setenv("TC_SCORES", "1.1,2.2,3.3")
-	t.Setenv("TC_DELAYS", "1s,500ms,2m")
-
-	var cfg sliceConfig
-	if err := envx.Unmarshal(&cfg); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(cfg.Ports) != 3 || cfg.Ports[0] != 8080 || cfg.Ports[2] != 8082 {
-		t.Errorf("Ports: got %v", cfg.Ports)
-	}
-	if len(cfg.Scores) != 3 || cfg.Scores[1] != 2.2 {
-		t.Errorf("Scores: got %v", cfg.Scores)
-	}
-	if len(cfg.Delays) != 3 || cfg.Delays[0] != time.Second || cfg.Delays[2] != 2*time.Minute {
-		t.Errorf("Delays: got %v", cfg.Delays)
-	}
-}
-
-func TestUnmarshal_SliceDefault(t *testing.T) {
-	var cfg sliceConfig
-	if err := envx.Unmarshal(&cfg); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(cfg.Tags) != 3 || cfg.Tags[0] != "a" || cfg.Tags[2] != "c" {
-		t.Errorf("Tags default: got %v", cfg.Tags)
-	}
-}
-
-func TestUnmarshal_SliceEnvOverridesDefault(t *testing.T) {
-	t.Setenv("TC_TAGS", "x,y")
-
-	var cfg sliceConfig
-	if err := envx.Unmarshal(&cfg); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(cfg.Tags) != 2 || cfg.Tags[0] != "x" || cfg.Tags[1] != "y" {
-		t.Errorf("Tags override: got %v", cfg.Tags)
-	}
-}
-
-// ---- nested structs -----------------------------------------------------
-
-type nestedInner struct {
-	Host string `env:"TC_HOST,default=localhost"`
-	Port uint32 `env:"TC_INNER_PORT,default=5432"`
-}
-
-type nestedConfig struct {
-	Name  string `env:"TC_NAME"`
-	Inner nestedInner
-}
-
-func TestUnmarshal_NestedStruct(t *testing.T) {
-	t.Setenv("TC_NAME", "matchmaking")
-	t.Setenv("TC_HOST", "db.internal")
-	t.Setenv("TC_INNER_PORT", "6543")
-
-	var cfg nestedConfig
-	if err := envx.Unmarshal(&cfg); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if cfg.Name != "matchmaking" {
-		t.Errorf("Name: got %q, want %q", cfg.Name, "matchmaking")
-	}
-	if cfg.Inner.Host != "db.internal" {
-		t.Errorf("Inner.Host: got %q, want %q", cfg.Inner.Host, "db.internal")
-	}
-	if cfg.Inner.Port != 6543 {
-		t.Errorf("Inner.Port: got %d, want 6543", cfg.Inner.Port)
-	}
-}
-
-func TestUnmarshal_NestedStructDefaults(t *testing.T) {
-	var cfg nestedConfig
-	if err := envx.Unmarshal(&cfg); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if cfg.Inner.Host != "localhost" {
-		t.Errorf("Inner.Host default: got %q, want %q", cfg.Inner.Host, "localhost")
-	}
-	if cfg.Inner.Port != 5432 {
-		t.Errorf("Inner.Port default: got %d, want 5432", cfg.Inner.Port)
+	m := Map()
+	if got, ok := m["EX_MAP"]; !ok || got != "value" {
+		t.Errorf("Map: got %v, want to contain EX_MAP=value", m)
 	}
 }

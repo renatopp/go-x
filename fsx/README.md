@@ -249,7 +249,7 @@ file only and return `ErrIsDir` if `src` is a directory.
 | `Zip(src, dest)` | Compresses a file or directory into a zip archive |
 | `Unzip(src, dest)` | Extracts a zip archive into a directory |
 | `OpenZip(path)` | Opens a zip archive for reading, returns `*zip.ReadCloser` |
-| `CreateZip(path)` | Creates a zip archive for writing, returns `*zip.Writer` |
+| `CreateZip(path)` | Creates a zip archive for writing, returns `*ZipWriter` |
 
 ### Tar
 

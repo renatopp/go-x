@@ -102,18 +102,29 @@ func OpenZip(path string) (*zip.ReadCloser, error) {
 	return zip.OpenReader(path)
 }
 
+// ZipWriter writes a zip archive to a file, closing both the zip stream and
+// the underlying file on Close.
+type ZipWriter struct {
+	*zip.Writer
+	f *os.File
+}
+
 // CreateZip creates a new zip archive at the specified path for writing.
-//
-// The returned *zip.Writer wraps a file it opens internally but does not
-// expose; calling Close on the writer flushes the archive's central
-// directory but does not close that file. Prefer Zip for the common case,
-// where the file is always closed correctly.
-func CreateZip(path string) (*zip.Writer, error) {
+func CreateZip(path string) (*ZipWriter, error) {
 	f, err := os.Create(path)
 	if err != nil {
 		return nil, err
 	}
-	return zip.NewWriter(f), nil
+	return &ZipWriter{zip.NewWriter(f), f}, nil
+}
+
+// Close flushes and closes the zip stream, then closes the underlying file.
+func (w *ZipWriter) Close() error {
+	if err := w.Writer.Close(); err != nil {
+		w.f.Close()
+		return err
+	}
+	return w.f.Close()
 }
 
 // ----------------------------------------------------------------------------
